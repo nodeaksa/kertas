@@ -286,7 +286,7 @@ export default function Sidebar({
                         </div>
                     </div>
                     <p className="mt-2 text-center text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
-                        kertas. v1.0.2
+                        kertas. v1.0.3
                     </p>
                 </div>
             </aside>
