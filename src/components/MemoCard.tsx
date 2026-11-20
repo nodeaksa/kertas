@@ -3,6 +3,7 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import { Archive, MoreHorizontal, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import type { ActiveTab, AppLabels, Memo, MemoAction } from '@/types/kertas'
 
@@ -191,7 +192,7 @@ export default function MemoCard({
                 </div>
             )}
             <div className="text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
                     {getMemoDisplayContent(memo.content)}
                 </ReactMarkdown>
             </div>

@@ -3,6 +3,7 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import { AlertTriangle, Pencil, X } from 'lucide-react'
 import type { AppLabels, DeleteTarget, Language, Memo } from '@/types/kertas'
 
@@ -150,7 +151,7 @@ export default function Modals({
                                     )}
                                 </div>
                                 <div className="prose prose-sm max-w-none break-words text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
                                         {getMemoDisplayContent(selectedMemo.content)}
                                     </ReactMarkdown>
                                 </div>
