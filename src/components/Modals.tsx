@@ -46,6 +46,45 @@ export default function Modals({
     handleConfirmDelete,
     deleteResourceName,
 }: ModalsProps) {
+    const isMoveToTrash = deleteTarget?.type === 'moveToTrash'
+    const confirmTitle = !deleteTarget
+        ? ''
+        : isMoveToTrash
+            ? (language === 'id' ? 'Pindahkan ke Sampah?' : 'Move to Trash?')
+            : deleteTarget.type === 'memo'
+                ? (language === 'id' ? 'Hapus Catatan?' : 'Delete Note?')
+                : deleteTarget.type === 'resource'
+                    ? (language === 'id' ? 'Hapus Lampiran?' : 'Delete Attachment?')
+                    : (language === 'id' ? 'Kosongkan Sampah?' : 'Empty Trash?')
+    const confirmDescription = !deleteTarget
+        ? ''
+        : isMoveToTrash
+            ? (language === 'id'
+                ? 'Catatan akan dipindahkan ke Sampah dan otomatis terhapus permanen setelah 7 hari.'
+                : 'This note will be moved to Trash and permanently deleted after 7 days.')
+            : deleteTarget.type === 'memo'
+                ? (language === 'id'
+                    ? 'Catatan ini akan dihapus secara permanen dan tidak bisa dikembalikan.'
+                    : 'This note will be permanently deleted and cannot be recovered.')
+                : deleteTarget.type === 'resource'
+                    ? (language === 'id'
+                        ? `Lampiran "${deleteResourceName ?? ''}" akan dihapus secara permanen dan tidak dapat dipulihkan.`
+                        : `Attachment "${deleteResourceName ?? ''}" will be permanently deleted and cannot be recovered.`)
+                    : (language === 'id'
+                        ? 'Semua catatan di Sampah dan lampirannya akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.'
+                        : 'All notes in Trash and their attachments will be permanently deleted. This cannot be undone.')
+    const confirmActionLabel = !deleteTarget
+        ? ''
+        : confirmLoading
+            ? (isMoveToTrash
+                ? (language === 'id' ? 'Memindahkan...' : 'Moving...')
+                : (language === 'id' ? 'Menghapus...' : 'Deleting...'))
+            : isMoveToTrash
+                ? (language === 'id' ? 'Pindahkan' : 'Move')
+                : deleteTarget.type === 'emptyTrash'
+                    ? labels.emptyTrash
+                    : labels.delete
+
     const markdownComponents = {
         input: (props: React.ComponentProps<'input'>) => (
             <input
@@ -203,24 +242,10 @@ export default function Modals({
                             </span>
                             <div>
                                 <h2 id="delete-confirm-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                                    {deleteTarget.type === 'memo'
-                                        ? (language === 'id' ? 'Hapus Catatan?' : 'Delete Note?')
-                                        : deleteTarget.type === 'resource'
-                                            ? (language === 'id' ? 'Hapus Lampiran?' : 'Delete Attachment?')
-                                            : (language === 'id' ? 'Kosongkan Sampah?' : 'Empty Trash?')}
+                                    {confirmTitle}
                                 </h2>
                                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                                    {deleteTarget.type === 'memo'
-                                        ? (language === 'id'
-                                            ? 'Catatan ini akan dihapus secara permanen dan tidak bisa dikembalikan.'
-                                            : 'This note will be permanently deleted and cannot be recovered.')
-                                        : deleteTarget.type === 'resource'
-                                            ? (language === 'id'
-                                                ? `Lampiran "${deleteResourceName ?? ''}" akan dihapus secara permanen dan tidak dapat dipulihkan.`
-                                                : `Attachment "${deleteResourceName ?? ''}" will be permanently deleted and cannot be recovered.`)
-                                            : (language === 'id'
-                                                ? 'Semua catatan di Sampah dan lampirannya akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.'
-                                                : 'All notes in Trash and their attachments will be permanently deleted. This cannot be undone.')}
+                                    {confirmDescription}
                                 </p>
                             </div>
                         </div>
@@ -239,9 +264,7 @@ export default function Modals({
                                 onClick={handleConfirmDelete}
                                 className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                {confirmLoading
-                                    ? (language === 'id' ? 'Menghapus...' : 'Deleting...')
-                                    : deleteTarget.type === 'emptyTrash' ? labels.emptyTrash : labels.delete}
+                                {confirmActionLabel}
                             </button>
                         </div>
                     </section>
