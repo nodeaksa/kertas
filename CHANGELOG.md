@@ -1,0 +1,46 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [1.0.0] - 2026-11-20
+
+### Added
+
+- **Rebranding to kertas.** — Full rebrand from "Memos" to **kertas.** (Indonesian for *"paper"*), with a new cat mascot logo (`icon.png`), Plus Jakarta Sans font, and updated metadata title/description.
+- **Full Monochrome Theme** — Replaced all green accents (`emerald`/`#72a984`) with a strict monochrome palette: zinc-50 / white surfaces on Light Mode and `#0f0f10` / `#141416` / `#18181b` on Dark Mode. Destructive actions retain red only.
+- **Dark / Light / System Theme Toggle** — Persistent theme preference stored in `localStorage` and Supabase `profiles` table.
+- **Markdown GFM Support** — Full GitHub Flavored Markdown rendering via `react-markdown` + `remark-gfm`: tables, task lists, code blocks, blockquotes, and inline images.
+- **Auto-tagging via `#hashtags`** — Tags are automatically extracted from note content on save and stored in a `tags[]` column; filterable from sidebar.
+- **File Attachments (Supabase Storage)** — Upload and manage file resources linked to notes. Signed URLs generated per session. Files deletable from the Resources tab with a custom confirmation modal.
+- **Daily Activity Heatmap** — 12-month contribution-style heatmap using `memo_daily_counts()` RPC, rendered with pure grayscale gradient cells.
+- **Mini Calendar** — Browse notes by date via an inline calendar widget in the right panel. Initialized client-side to avoid Next.js SSR blocking-value warnings.
+- **Bilingual UI (ID / EN)** — Full Indonesian and English interface labels, persisted in user preferences.
+- **Custom Confirmation Modal** — Replaced all `window.confirm()` calls with an accessible modal component: dark overlay, monochrome card, warning icon, Cancel and Delete buttons with loading state, Escape-to-close support.
+- **7-day Recycle Bin (Sampah)** — Soft-delete notes by setting `deleted_at` timestamp; notes are restorable within 7 days and auto-purged after expiry.
+- **Archive** — Archive notes without deleting them; restorable from the Archived tab.
+- **Search** — Full-text search across note content via Supabase `ilike` query.
+- **Floating Action Button** — Mobile-friendly FAB to quickly compose a new note.
+- **Safe Markdown Image Renderer** — Custom `img` renderer in `react-markdown` skips rendering when `src` is empty or invalid, eliminating console warnings.
+- **`.env.example`** — Template environment file for easy project setup.
+
+### Changed
+
+- **Modular Component Architecture** — Refactored the monolithic `page.tsx` into focused, reusable components:
+  - `Sidebar` — Navigation, tag list, user profile menu
+  - `MemoEditor` — New note composer with file upload and visibility toggle
+  - `MemoCard` — Individual note card with Markdown rendering and action menu
+  - `RightPanel` — Calendar, heatmap, and resources panel
+  - `SettingsView` — Profile, theme, language, and font-size settings
+  - `Modals` — Shared modal layer (note detail / edit view)
+- **Type Definitions Extracted** — All shared TypeScript types (`Memo`, `Resource`, `AppLabels`, `Theme`, `Language`, `FontSize`, `ActiveTab`, etc.) moved to `src/types/kertas.ts` for clean separation of concerns.
+- **`calDate` Initialization Deferred** — Calendar date state initialized inside `useEffect` (not at render time) to avoid Next.js 16 "unstable value" blocking-route errors.
+- **Package Name** — `package.json` `name` field updated from `memos-app` to `kertas`.
+
+---
+
+[1.0.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.0.0

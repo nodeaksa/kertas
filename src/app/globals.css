@@ -1,26 +1,71 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafafa;
+  --foreground: #18181b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plus-jakarta-sans);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f0f10;
+    --foreground: #f4f4f5;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-plus-jakarta-sans), system-ui, -apple-system, sans-serif;
+}
+
+html[data-font-size="small"] {
+  font-size: 14px;
+}
+
+html[data-font-size="medium"] {
+  font-size: 16px;
+}
+
+html[data-font-size="large"] {
+  font-size: 18px;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+.dark body,
+.dark .app-shell {
+  background-color: #0f0f10;
+  color: #f4f4f5;
+}
+
+.dark .app-shell aside:first-of-type {
+  background-color: #141416;
+  border-color: #27272a;
+}
+
+.dark .app-shell .bg-white {
+  background-color: #18181b;
+}
+
+.dark .app-shell input:not([type="checkbox"]),
+.dark .app-shell textarea,
+.dark .app-shell select {
+  background-color: #18181b;
+  color: #f4f4f5;
+  border-color: #27272a;
+}
+
+.dark .app-shell input::placeholder,
+.dark .app-shell textarea::placeholder {
+  color: #71717a;
 }
