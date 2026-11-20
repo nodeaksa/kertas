@@ -1,0 +1,37 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Tiap hari jam 03:00 UTC (10:00 WIB)
+    - cron: "0 3 * * *"
+  workflow_dispatch: # bisa dijalankan manual dari tab Actions
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping Supabase (query tabel memos)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Secret SUPABASE_URL / SUPABASE_ANON_KEY belum diisi"
+            exit 1
+          fi
+
+          status=$(curl -sS -o /dev/null -w "%{http_code}" \
+            --retry 3 --retry-delay 5 --max-time 20 \
+            "${SUPABASE_URL%/}/rest/v1/memos?select=*&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+
+          echo "HTTP status: $status"
+
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Ping gagal. Cek apakah project sedang paused."
+            exit 1
+          fi

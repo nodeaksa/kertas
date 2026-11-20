@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.1] - 2026-11-20
+
+### Changed
+
+- Menonaktifkan sementara fitur dan tampilan pendaftaran pengguna baru (*Daftar sekarang*) pada halaman login untuk membatasi akses ke mode privat.
+
+### Added
+
+- Menambahkan workflow otomatis GitHub Actions (`Supabase Keep-Alive`) untuk mencegah database Supabase terkena *auto-pause*.
+
 ## [1.0.0] - 2026-11-20
 
 ### Added
@@ -43,4 +53,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.0.1]: https://github.com/nodeaksa/kertas/releases/tag/v1.0.1
 [1.0.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.0.0
