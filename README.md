@@ -5,6 +5,8 @@
 
   **Your little space for thoughts.**
 
+  [Live Demo](https://kertasapp.vercel.app)
+
   A clean, minimal note-taking app inspired by the simplicity of [memos](https://github.com/usememos/memos).
 
   ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
