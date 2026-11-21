@@ -565,11 +565,11 @@ export default function HomePage() {
             .maybeSingle()
         if (error) {
             reportError(error.message)
-            return false
+            return
         }
         if (!data) {
             reportError('Catatan tidak ditemukan atau sudah berada di Sampah.')
-            return false
+            return
         }
 
         setMemos((current) => current.filter((item) => item.id !== memo.id))
@@ -577,13 +577,12 @@ export default function HomePage() {
         setRandomMemo((current) => current?.id === memo.id ? null : current)
         await Promise.all([fetchTrashCount(), fetchTags(), fetchDailyCounts()])
         setSuccessMessage('Catatan dipindahkan ke Sampah (otomatis terhapus dalam 7 hari)')
-        return true
     }
 
     const handleMemoAction = (memo: Memo, action: MemoAction) => {
         setOpenMenuId(null)
         if (action === 'delete') {
-            setDeleteTarget({ type: 'moveToTrash', memo })
+            void handleSoftDeleteMemo(memo)
             return
         }
 
@@ -636,12 +635,6 @@ export default function HomePage() {
         setError(null)
         setSuccessMessage(null)
         try {
-            if (deleteTarget.type === 'moveToTrash') {
-                const moved = await handleSoftDeleteMemo(deleteTarget.memo)
-                if (moved) setDeleteTarget(null)
-                return
-            }
-
             if (deleteTarget.type === 'memo' || deleteTarget.type === 'emptyTrash') {
                 let memosToDelete: Pick<Memo, 'id' | 'content'>[]
                 if (deleteTarget.type === 'memo') {

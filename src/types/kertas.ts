@@ -46,7 +46,6 @@ export type DeleteTarget =
     | { id: string; type: 'memo' }
     | { id: string; type: 'resource'; filePath?: string }
     | { type: 'emptyTrash' }
-    | { type: 'moveToTrash'; memo: Memo }
 
 export type Profile = {
     id: string
