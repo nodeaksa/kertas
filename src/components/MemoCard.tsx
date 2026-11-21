@@ -21,8 +21,6 @@ type MemoCardProps = {
     handleTagClick: (tag: string | null) => void
     handleOpenMemo: (memo: Memo) => void
     getMemoDisplayContent: (content: string) => string
-    handleToggleChecklist: (memoId: string, content: string, lineNumber: number, checked: boolean, updatedAt?: string | null) => void
-    checklistSavingIds: Set<string>
 }
 
 export default function MemoCard({
@@ -39,42 +37,17 @@ export default function MemoCard({
     handleTagClick,
     handleOpenMemo,
     getMemoDisplayContent,
-    handleToggleChecklist,
-    checklistSavingIds,
 }: MemoCardProps) {
     const [now, setNow] = useState<number | null>(null)
-    const [menuMounted, setMenuMounted] = useState(false)
-    const [menuVisible, setMenuVisible] = useState(false)
-    const isMenuOpen = openMenuId === memo.id
-
     useEffect(() => {
         if (activeTab !== 'trash') return
         const frame = window.requestAnimationFrame(() => setNow(Date.now()))
         return () => window.cancelAnimationFrame(frame)
     }, [activeTab])
-    useEffect(() => {
-        let frame: number | undefined
-        let timeout: number | undefined
-        if (isMenuOpen) {
-            frame = window.requestAnimationFrame(() => {
-                setMenuMounted(true)
-                setMenuVisible(true)
-            })
-        } else {
-            frame = window.requestAnimationFrame(() => setMenuVisible(false))
-            const exitDelay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 160
-            timeout = window.setTimeout(() => setMenuMounted(false), exitDelay)
-        }
-        return () => {
-            if (frame !== undefined) window.cancelAnimationFrame(frame)
-            if (timeout !== undefined) window.clearTimeout(timeout)
-        }
-    }, [isMenuOpen])
     const remainingDays = memo.deleted_at && now !== null
         ? Math.max(0, Math.ceil((new Date(memo.deleted_at).getTime() + 7 * 24 * 60 * 60 * 1000 - now) / (24 * 60 * 60 * 1000)))
         : null
 
-    type MarkdownNodeWithPosition = { position?: { start?: { line?: number } } }
     const markdownComponents = {
         // Safe image renderer to avoid empty src warnings
         img: ({ src, alt, ...props }: { src?: unknown; alt?: string } & React.ImgHTMLAttributes<HTMLImageElement>) => {
@@ -89,20 +62,12 @@ export default function MemoCard({
                 />
             );
         },
-        li: ({ node, ...props }: React.ComponentProps<'li'> & { node?: MarkdownNodeWithPosition }) => (
-            <li {...props} data-checklist-line={node?.position?.start?.line} />
-        ),
         input: (props: React.ComponentProps<'input'>) => (
             <input
                 {...props}
-                checked={Boolean(props.checked)}
-                disabled={Boolean(memo.deleted_at) || checklistSavingIds.has(memo.id)}
-                aria-label={language === 'id' ? 'Ubah status checklist' : 'Toggle checklist item'}
-                onClick={(event) => event.stopPropagation()}
-                onChange={(event) => {
+                onClick={(event) => {
                     event.stopPropagation()
-                    const lineNumber = Number(event.currentTarget.closest('li')?.dataset.checklistLine)
-                    handleToggleChecklist(memo.id, memo.content, lineNumber, event.currentTarget.checked, memo.updated_at)
+                    props.onClick?.(event)
                 }}
             />
         ),
@@ -125,8 +90,8 @@ export default function MemoCard({
                 >
                     <MoreHorizontal className="w-4 h-4" />
                 </button>
-                {(isMenuOpen || menuMounted) && (
-                    <div className={`absolute right-0 top-8 z-10 w-44 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg transition duration-150 dark:bg-[#18181b] dark:border-zinc-800 ${menuVisible ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'}`}>
+                {openMenuId === memo.id && (
+                    <div className="absolute right-0 top-8 z-10 w-44 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:bg-[#18181b] dark:border-zinc-800">
                         {activeTab === 'trash' ? (
                             <>
                                 <button

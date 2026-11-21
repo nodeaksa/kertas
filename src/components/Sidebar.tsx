@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, type Dispatch, type SetStateAction } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import {
     Archive,
     Calendar as CalendarIcon,
@@ -67,25 +67,12 @@ export default function Sidebar({
     selectedDate,
     handleDateClick,
 }: SidebarProps) {
-    useEffect(() => {
-        if (!mobileMenuOpen) return
-
-        const handleEscape = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') setMobileMenuOpen(false)
-        }
-        window.addEventListener('keydown', handleEscape)
-        return () => window.removeEventListener('keydown', handleEscape)
-    }, [mobileMenuOpen, setMobileMenuOpen])
-
     return (
         <>
             <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-zinc-200 sticky top-0 z-20 dark:bg-[#141416] dark:border-zinc-800">
                 <div className="flex items-center gap-2.5">
                     <button
-                        type="button"
-                        aria-label={mobileMenuOpen ? (language === 'id' ? 'Tutup menu' : 'Close menu') : (language === 'id' ? 'Buka menu' : 'Open menu')}
-                        aria-expanded={mobileMenuOpen}
-                        onClick={() => setMobileMenuOpen((open) => !open)}
+                        onClick={() => setMobileMenuOpen(true)}
                         className="p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 rounded-lg"
                     >
                         <Menu className="w-5 h-5" />
@@ -115,11 +102,12 @@ export default function Sidebar({
                 </div>
             </header>
 
-            <div
-                aria-hidden="true"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`fixed inset-0 z-30 bg-black/40 transition-opacity duration-200 lg:hidden ${mobileMenuOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
-            />
+            {mobileMenuOpen && (
+                <div
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+                />
+            )}
 
             <aside
                 className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-zinc-200 p-4 flex flex-col justify-between transition-transform duration-200 overflow-y-auto dark:bg-[#141416] dark:border-zinc-800 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
@@ -146,8 +134,6 @@ export default function Sidebar({
                                 <ChevronDown className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
                             </button>
                             <button
-                                type="button"
-                                aria-label={language === 'id' ? 'Tutup menu' : 'Close menu'}
                                 onClick={() => setMobileMenuOpen(false)}
                                 className="lg:hidden p-1 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                             >
@@ -300,7 +286,7 @@ export default function Sidebar({
                         </div>
                     </div>
                     <p className="mt-2 text-center text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
-                        kertas. v1.1.1
+                        kertas. v1.0.3
                     </p>
                 </div>
             </aside>

@@ -5,13 +5,19 @@
 :root {
   --background: #fafafa;
   --foreground: #18181b;
-  color-scheme: light;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-plus-jakarta-sans);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f0f10;
+    --foreground: #f4f4f5;
+  }
 }
 
 body {
@@ -33,8 +39,6 @@ html[data-font-size="large"] {
 }
 
 .dark {
-  --background: #0f0f10;
-  --foreground: #f4f4f5;
   color-scheme: dark;
 }
 
@@ -64,15 +68,4 @@ html[data-font-size="large"] {
 .dark .app-shell input::placeholder,
 .dark .app-shell textarea::placeholder {
   color: #71717a;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
 }
