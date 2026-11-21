@@ -1,0 +1,2 @@
+[functions.purge-expired-memos]
+verify_jwt = true

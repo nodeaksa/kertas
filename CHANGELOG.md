@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.2] - 2026-11-21
+
+### Fixed
+
+- Tema Light, Dark, dan System kini dikelola oleh `next-themes` agar pilihan System mengikuti perubahan preferensi OS tanpa bentrok dengan hydration.
+- Ikon tema dan pilihan tema aktif ditampilkan setelah komponen ter-mount untuk mencegah hydration mismatch.
+
+## [1.1.1] - 2026-11-21
+
+### Fixed
+
+- Tema System mengikuti preferensi warna OS, sementara pilihan Light dan Dark tidak lagi ditimpa preferensi OS.
+
+## [1.1.0] - 2026-11-21
+
+### Added
+
+- Toolbar Markdown untuk editor catatan baru dan Edit, termasuk checklist, blok JavaScript, serta upload gambar dan lampiran.
+- Infrastruktur purge Sampah terjadwal melalui Supabase Edge Function dan GitHub Actions. Jadwal memerlukan deployment serta konfigurasi secret; tidak aktif hanya dengan mengubah kode.
+
+### Changed
+
+- Editor catatan baru tumbuh hingga enam baris sebelum menggunakan scroll internal.
+- Jumlah tag dan aktivitas hanya menghitung memo non-Sampah; hitungan tag tidak lagi bergantung pada RPC `my_tags()`.
+- Animasi modal, menu memo, dan sidebar mobile menghormati preferensi reduced motion.
+
+### Fixed
+
+- Checklist Markdown dapat disisipkan pada kursor dan status preview disimpan ke Supabase tanpa optimistic update.
+- Semua referensi lampiran dalam memo diproses; kegagalan metadata upload mencoba membersihkan file di Storage.
+- Instruksi setup menjelaskan migration dan prasyarat Supabase yang memang belum disediakan repo.
+
+## [1.0.3] - 2026-11-20
+
+### Added
+
+- Menambahkan dialog konfirmasi sebelum catatan dipindahkan ke Sampah, dengan penjelasan bahwa catatan akan dihapus permanen setelah 7 hari.
+
 ## [1.0.2] - 2026-11-20
 
 ### Fixed
@@ -59,6 +97,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.1.2]: https://github.com/nodeaksa/kertas/releases/tag/v1.1.2
+[1.1.1]: https://github.com/nodeaksa/kertas/releases/tag/v1.1.1
+[1.1.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.1.0
+[1.0.3]: https://github.com/nodeaksa/kertas/releases/tag/v1.0.3
 [1.0.2]: https://github.com/nodeaksa/kertas/releases/tag/v1.0.2
 [1.0.1]: https://github.com/nodeaksa/kertas/releases/tag/v1.0.1
 [1.0.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.0.0

@@ -1,6 +1,7 @@
 'use client'
 
-import type { Dispatch, SetStateAction } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useTheme } from 'next-themes'
 import {
     Archive,
     Calendar as CalendarIcon,
@@ -67,12 +68,34 @@ export default function Sidebar({
     selectedDate,
     handleDateClick,
 }: SidebarProps) {
+    const { resolvedTheme } = useTheme()
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        // A mount guard keeps the server and first client render identical.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setMounted(true)
+    }, [])
+
+    useEffect(() => {
+        if (!mobileMenuOpen) return
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setMobileMenuOpen(false)
+        }
+        window.addEventListener('keydown', handleEscape)
+        return () => window.removeEventListener('keydown', handleEscape)
+    }, [mobileMenuOpen, setMobileMenuOpen])
+
     return (
         <>
             <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-zinc-200 sticky top-0 z-20 dark:bg-[#141416] dark:border-zinc-800">
                 <div className="flex items-center gap-2.5">
                     <button
-                        onClick={() => setMobileMenuOpen(true)}
+                        type="button"
+                        aria-label={mobileMenuOpen ? (language === 'id' ? 'Tutup menu' : 'Close menu') : (language === 'id' ? 'Buka menu' : 'Open menu')}
+                        aria-expanded={mobileMenuOpen}
+                        onClick={() => setMobileMenuOpen((open) => !open)}
                         className="p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 rounded-lg"
                     >
                         <Menu className="w-5 h-5" />
@@ -93,8 +116,9 @@ export default function Sidebar({
                         onClick={toggleTheme}
                         className="rounded-lg p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     >
-                        <Sun className="hidden h-4 w-4 dark:block" />
-                        <Moon className="h-4 w-4 dark:hidden" />
+                        {mounted && (resolvedTheme === 'dark'
+                            ? <Sun className="h-4 w-4" />
+                            : <Moon className="h-4 w-4" />)}
                     </button>
                     <div className="w-8 h-8 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center text-sm font-semibold uppercase">
                         {username.slice(0, 1)}
@@ -102,12 +126,11 @@ export default function Sidebar({
                 </div>
             </header>
 
-            {mobileMenuOpen && (
-                <div
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="fixed inset-0 bg-black/40 z-30 lg:hidden"
-                />
-            )}
+            <div
+                aria-hidden="true"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`fixed inset-0 z-30 bg-black/40 transition-opacity duration-200 lg:hidden ${mobileMenuOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+            />
 
             <aside
                 className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-zinc-200 p-4 flex flex-col justify-between transition-transform duration-200 overflow-y-auto dark:bg-[#141416] dark:border-zinc-800 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
@@ -134,6 +157,8 @@ export default function Sidebar({
                                 <ChevronDown className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
                             </button>
                             <button
+                                type="button"
+                                aria-label={language === 'id' ? 'Tutup menu' : 'Close menu'}
                                 onClick={() => setMobileMenuOpen(false)}
                                 className="lg:hidden p-1 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                             >
@@ -276,8 +301,9 @@ export default function Sidebar({
                                 onClick={toggleTheme}
                                 className="rounded-xl p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                             >
-                                <Sun className="hidden h-4 w-4 dark:block" />
-                                <Moon className="h-4 w-4 dark:hidden" />
+                                {mounted && (resolvedTheme === 'dark'
+                                    ? <Sun className="h-4 w-4" />
+                                    : <Moon className="h-4 w-4" />)}
                             </button>
                         </div>
                         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
@@ -286,7 +312,7 @@ export default function Sidebar({
                         </div>
                     </div>
                     <p className="mt-2 text-center text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
-                        kertas. v1.0.2
+                        kertas. v1.1.2
                     </p>
                 </div>
             </aside>

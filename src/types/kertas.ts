@@ -2,7 +2,7 @@ export type ActiveTab = 'memos' | 'tags' | 'resources' | 'daily' | 'archived' | 
 export type Theme = 'light' | 'dark' | 'system'
 export type FontSize = 'small' | 'medium' | 'large'
 export type Language = 'id' | 'en'
-export type UploadPurpose = 'memo' | 'library'
+export type UploadPurpose = 'memo' | 'edit' | 'library'
 export type MemoAction = 'archive' | 'restore' | 'delete'
 
 export type Memo = {
@@ -46,6 +46,7 @@ export type DeleteTarget =
     | { id: string; type: 'memo' }
     | { id: string; type: 'resource'; filePath?: string }
     | { type: 'emptyTrash' }
+    | { type: 'moveToTrash'; memo: Memo }
 
 export type Profile = {
     id: string

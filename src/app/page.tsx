@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Paperclip, Plus, Search, Trash2, Upload, X } from 'lucide-react'
@@ -14,7 +15,6 @@ import type {
     ActiveTab,
     AppLabels,
     CalendarDay,
-    DailyCount,
     DeleteTarget,
     FontSize,
     Language,
@@ -25,12 +25,14 @@ import type {
     Theme,
     UploadPurpose,
 } from '@/types/kertas'
+import { replaceChecklistItem, replaceResourceReferences } from '@/lib/markdown'
 
 const TRASH_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 
 export default function HomePage() {
     const [supabase] = useState(createClient)
     const router = useRouter()
+    const { theme: providerTheme, setTheme, resolvedTheme } = useTheme()
 
     const [username, setUsername] = useState('username')
     const [userId, setUserId] = useState<string | null>(null)
@@ -56,18 +58,16 @@ export default function HomePage() {
     const [editContent, setEditContent] = useState('')
     const [editVisibility, setEditVisibility] = useState<'private' | 'public'>('private')
     const [uploadPurpose, setUploadPurpose] = useState<UploadPurpose>('memo')
+    const [checklistSavingIds, setChecklistSavingIds] = useState<Set<string>>(() => new Set())
     const [error, setError] = useState<string | null>(null)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
     const [profileUsername, setProfileUsername] = useState('')
     const [password, setPassword] = useState('')
     const [language, setLanguage] = useState<Language>('id')
-    const [theme, setTheme] = useState<Theme>(() => {
-        if (typeof window === 'undefined') return 'system'
-        const savedTheme = window.localStorage.getItem('kertas-theme')
-        return savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system'
-            ? savedTheme
+    const theme: Theme =
+        providerTheme === 'light' || providerTheme === 'dark' || providerTheme === 'system'
+            ? providerTheme
             : 'system'
-    })
     const [fontSize, setFontSize] = useState<FontSize>('medium')
     const [preferencesReady, setPreferencesReady] = useState(false)
     const [randomMemo, setRandomMemo] = useState<Memo | null>(null)
@@ -75,6 +75,17 @@ export default function HomePage() {
     const importInputRef = useRef<HTMLInputElement>(null)
     const memoEditorRef = useRef<HTMLDivElement>(null)
     const memoTextareaRef = useRef<HTMLTextAreaElement>(null)
+    const editTextareaRef = useRef<HTMLTextAreaElement>(null)
+    const activeEditorTargetRef = useRef<'memo' | 'edit'>('memo')
+    const uploadTargetRef = useRef<{
+        target: 'memo' | 'edit'
+        selectionStart: number
+        selectionEnd: number
+    } | null>(null)
+    const memoFetchSequence = useRef(0)
+    const tagFetchSequence = useRef(0)
+    const dailyFetchSequence = useRef(0)
+    const checklistSavingRef = useRef(new Set<string>())
     const [memoEditorVisible, setMemoEditorVisible] = useState(true)
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
     const [confirmLoading, setConfirmLoading] = useState(false)
@@ -108,9 +119,16 @@ export default function HomePage() {
                 setOpenMenuId(null)
             }
         }
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setOpenMenuId(null)
+        }
 
         document.addEventListener('mousedown', handleOutsideMouseDown)
-        return () => document.removeEventListener('mousedown', handleOutsideMouseDown)
+        document.addEventListener('keydown', handleEscape)
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideMouseDown)
+            document.removeEventListener('keydown', handleEscape)
+        }
     }, [openMenuId])
 
     useEffect(() => {
@@ -127,7 +145,6 @@ export default function HomePage() {
 
     useEffect(() => {
         if (!preferencesReady || !userId) return
-        window.localStorage.setItem('kertas-theme', theme)
         window.localStorage.setItem(`memos-settings-${userId}`, JSON.stringify({
             language,
             theme,
@@ -136,20 +153,8 @@ export default function HomePage() {
     }, [fontSize, language, preferencesReady, theme, userId])
 
     useEffect(() => {
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-        const applyTheme = () => {
-            const isDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches)
-            document.documentElement.classList.toggle('dark', isDark)
-            document.documentElement.dataset.theme = theme
-        }
-
-        applyTheme()
         document.documentElement.dataset.fontSize = fontSize
-        if (theme !== 'system') return
-
-        mediaQuery.addEventListener('change', applyTheme)
-        return () => mediaQuery.removeEventListener('change', applyTheme)
-    }, [fontSize, theme])
+    }, [fontSize])
 
     useEffect(() => {
         if (activeTab !== 'memos' || loading || !memoEditorRef.current) return
@@ -261,6 +266,7 @@ export default function HomePage() {
         archived = false,
         includeDeleted = false,
     ): Promise<boolean> => {
+        const requestId = ++memoFetchSequence.current
         const purgeSucceeded = await purgeExpiredMemos()
         if (!purgeSucceeded) return false
 
@@ -287,36 +293,79 @@ export default function HomePage() {
 
         const { data, error } = await req
         if (error) {
+            if (requestId !== memoFetchSequence.current) return true
             reportError(error.message)
             return false
         }
+        if (requestId !== memoFetchSequence.current) return true
         if (data) setMemos(data as Memo[])
         return fetchTrashCount()
     }, [fetchTrashCount, purgeExpiredMemos, reportError, supabase])
 
     const fetchTags = useCallback(async (): Promise<boolean> => {
-        const { data, error } = await supabase.rpc('my_tags')
-        if (error) {
-            reportError(error.message)
-            return false
+        const requestId = ++tagFetchSequence.current
+        const rows: { tags: unknown }[] = []
+        let offset = 0
+        while (true) {
+            const { data, error } = await supabase
+                .from('memos')
+                .select('tags')
+                .is('deleted_at', null)
+                .order('id', { ascending: true })
+                .range(offset, offset + 499)
+            if (error) {
+                if (requestId !== tagFetchSequence.current) return true
+                reportError(error.message)
+                return false
+            }
+            if (requestId !== tagFetchSequence.current) return true
+            const page = data ?? []
+            if (page.length === 0) break
+            rows.push(...page)
+            offset += page.length
         }
-        if (data) setTagsList(data as TagCount[])
+        if (requestId !== tagFetchSequence.current) return true
+
+        const counts = new Map<string, number>()
+        for (const row of rows) {
+            const tags = Array.isArray(row.tags)
+                ? Array.from(new Set(row.tags.filter((tag): tag is string => typeof tag === 'string')))
+                : []
+            for (const tag of tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
+        }
+        setTagsList(Array.from(counts, ([tag, total]) => ({ tag, total })).sort((a, b) => a.tag.localeCompare(b.tag)))
         return true
     }, [reportError, supabase])
 
     const fetchDailyCounts = useCallback(async (): Promise<boolean> => {
-        const { data, error } = await supabase.rpc('memo_daily_counts')
-        if (error) {
-            reportError(error.message)
-            return false
+        const requestId = ++dailyFetchSequence.current
+        const rows: { created_at: string | null }[] = []
+        let offset = 0
+        while (true) {
+            const { data, error } = await supabase
+                .from('memos')
+                .select('created_at')
+                .is('deleted_at', null)
+                .order('id', { ascending: true })
+                .range(offset, offset + 499)
+            if (error) {
+                if (requestId !== dailyFetchSequence.current) return true
+                reportError(error.message)
+                return false
+            }
+            if (requestId !== dailyFetchSequence.current) return true
+            const page = data ?? []
+            if (page.length === 0) break
+            rows.push(...page)
+            offset += page.length
         }
-        if (data) {
-            const map: Record<string, number> = {}
-            ;(data as DailyCount[]).forEach((row) => {
-                map[row.day] = row.total
-            })
-            setDailyCounts(map)
-        }
+        if (requestId !== dailyFetchSequence.current) return true
+        const map: Record<string, number> = {}
+        rows.forEach((row) => {
+            const day = typeof row.created_at === 'string' ? row.created_at.slice(0, 10) : ''
+            if (day) map[day] = (map[day] ?? 0) + 1
+        })
+        setDailyCounts(map)
         return true
     }, [reportError, supabase])
 
@@ -452,7 +501,7 @@ export default function HomePage() {
             }
         }
         void init()
-    }, [fetchDailyCounts, fetchMemos, fetchResources, fetchTags, reportError, router, supabase])
+    }, [fetchDailyCounts, fetchMemos, fetchResources, fetchTags, reportError, router, setTheme, supabase])
 
     const extractTags = (text: string): string[] => {
         const matches = text.match(/#([a-zA-Z0-9_-]+)/g)
@@ -486,8 +535,27 @@ export default function HomePage() {
         setSubmitting(false)
     }
 
-    const insertSnippet = (snippet: string) => {
-        setContent((prev) => (prev ? `${prev}\n${snippet}` : snippet))
+    const insertSnippet = (
+        snippet: string,
+        target: 'memo' | 'edit' = activeEditorTargetRef.current,
+        selection?: { start: number; end: number },
+    ) => {
+        const textarea = target === 'memo' ? memoTextareaRef.current : editTextareaRef.current
+        const currentValue = target === 'memo' ? content : editContent
+        const start = selection?.start ?? textarea?.selectionStart ?? currentValue.length
+        const end = selection?.end ?? textarea?.selectionEnd ?? start
+        const updatedValue = `${currentValue.slice(0, start)}${snippet}${currentValue.slice(end)}`
+
+        if (target === 'memo') setContent(updatedValue)
+        else setEditContent(updatedValue)
+
+        const placeholderOffset = snippet.startsWith('```js\n\n')
+            ? snippet.indexOf('\n\n') + 1
+            : snippet.length
+        window.requestAnimationFrame(() => {
+            textarea?.focus()
+            textarea?.setSelectionRange(start + placeholderOffset, start + placeholderOffset)
+        })
     }
 
     const handleLogout = async () => {
@@ -565,24 +633,25 @@ export default function HomePage() {
             .maybeSingle()
         if (error) {
             reportError(error.message)
-            return
+            return false
         }
         if (!data) {
             reportError('Catatan tidak ditemukan atau sudah berada di Sampah.')
-            return
+            return false
         }
 
         setMemos((current) => current.filter((item) => item.id !== memo.id))
         setSelectedMemo((current) => current?.id === memo.id ? null : current)
         setRandomMemo((current) => current?.id === memo.id ? null : current)
         await Promise.all([fetchTrashCount(), fetchTags(), fetchDailyCounts()])
-        setSuccessMessage('Catatan dipindahkan ke Sampah (otomatis terhapus dalam 7 hari)')
+        setSuccessMessage(language === 'id' ? 'Catatan dipindahkan ke Sampah.' : 'Note moved to Trash.')
+        return true
     }
 
     const handleMemoAction = (memo: Memo, action: MemoAction) => {
         setOpenMenuId(null)
         if (action === 'delete') {
-            void handleSoftDeleteMemo(memo)
+            setDeleteTarget({ type: 'moveToTrash', memo })
             return
         }
 
@@ -635,6 +704,12 @@ export default function HomePage() {
         setError(null)
         setSuccessMessage(null)
         try {
+            if (deleteTarget.type === 'moveToTrash') {
+                const moved = await handleSoftDeleteMemo(deleteTarget.memo)
+                if (moved) setDeleteTarget(null)
+                return
+            }
+
             if (deleteTarget.type === 'memo' || deleteTarget.type === 'emptyTrash') {
                 let memosToDelete: Pick<Memo, 'id' | 'content'>[]
                 if (deleteTarget.type === 'memo') {
@@ -756,6 +831,57 @@ export default function HomePage() {
         setSuccessMessage('Catatan berhasil diperbarui.')
     }
 
+    const handleToggleChecklist = async (
+        memoId: string,
+        memoContent: string,
+        lineNumber: number,
+        checked: boolean,
+        updatedAt?: string | null,
+    ) => {
+        if (checklistSavingRef.current.has(memoId)) return
+
+        const updatedContent = replaceChecklistItem(memoContent, lineNumber, checked)
+        if (updatedContent === null) {
+            reportError(language === 'id'
+                ? 'Status checklist tidak dapat diperbarui. Muat ulang catatan dan coba lagi.'
+                : 'The checklist item could not be updated. Reload the note and try again.')
+            return
+        }
+
+        checklistSavingRef.current.add(memoId)
+        setChecklistSavingIds(new Set(checklistSavingRef.current))
+        try {
+            let updateRequest = supabase
+                .from('memos')
+                .update({ content: updatedContent })
+                .eq('id', memoId)
+                .is('deleted_at', null)
+            if (updatedAt) updateRequest = updateRequest.eq('updated_at', updatedAt)
+            const { data, error } = await updateRequest.select('*').maybeSingle()
+            if (error) {
+                reportError(error.message)
+                return
+            }
+            if (!data) {
+                reportError(language === 'id'
+                    ? 'Catatan berubah atau tidak dapat diakses. Muat ulang sebelum mengubah checklist.'
+                    : 'The note changed or is no longer available. Reload before changing its checklist.')
+                return
+            }
+
+            const updatedMemo = data as Memo
+            setMemos((current) => current.map((memo) => memo.id === memoId ? updatedMemo : memo))
+            setSelectedMemo((current) => current?.id === memoId ? updatedMemo : current)
+        } catch {
+            reportError(language === 'id'
+                ? 'Checklist gagal disimpan. Periksa koneksi lalu coba lagi.'
+                : 'The checklist could not be saved. Check your connection and try again.')
+        } finally {
+            checklistSavingRef.current.delete(memoId)
+            setChecklistSavingIds(new Set(checklistSavingRef.current))
+        }
+    }
+
     const handleUploadSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]
         event.target.value = ''
@@ -794,15 +920,25 @@ export default function HomePage() {
             return
         }
 
-        if (uploadPurpose === 'memo') {
+        if (uploadPurpose !== 'library') {
             const encodedPath = encodeURIComponent(path).replace(/[!'()*]/g, (character) =>
                 `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
             const resourceLink = `resource://${encodedPath}`
             const markdownName = file.name.replace(/[\\[\]]/g, '\\$&')
-            insertSnippet(file.type.startsWith('image/')
+            const snippet = file.type.startsWith('image/')
                 ? `![${markdownName}](${resourceLink})`
-                : `[${markdownName}](${resourceLink})`)
+                : `[${markdownName}](${resourceLink})`
+            const target = uploadTargetRef.current
+            if (target) {
+                insertSnippet(snippet, target.target, {
+                    start: target.selectionStart,
+                    end: target.selectionEnd,
+                })
+            } else {
+                insertSnippet(snippet, uploadPurpose)
+            }
         }
+        uploadTargetRef.current = null
         await fetchResources(userId)
         setSuccessMessage('Lampiran berhasil diunggah.')
         setSubmitting(false)
@@ -849,7 +985,7 @@ export default function HomePage() {
     }
 
     const toggleTheme = () => {
-        const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark'
+        const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark'
         void handleThemeChange(nextTheme)
     }
 
@@ -920,7 +1056,16 @@ export default function HomePage() {
         }
     }
 
-    const openUploadPicker = (purpose: 'memo' | 'library', imagesOnly = false) => {
+    const openUploadPicker = (purpose: UploadPurpose, imagesOnly = false) => {
+        const target = purpose === 'library' ? null : purpose
+        const textarea = target === 'edit' ? editTextareaRef.current : memoTextareaRef.current
+        uploadTargetRef.current = target
+            ? {
+                target,
+                selectionStart: textarea?.selectionStart ?? (target === 'edit' ? editContent.length : content.length),
+                selectionEnd: textarea?.selectionEnd ?? (target === 'edit' ? editContent.length : content.length),
+            }
+            : null
         setUploadPurpose(purpose)
         if (fileInputRef.current) fileInputRef.current.accept = imagesOnly ? 'image/*' : ''
         fileInputRef.current?.click()
@@ -952,7 +1097,7 @@ export default function HomePage() {
             delete: 'Hapus Permanen',
             moveToTrash: 'Pindahkan ke Sampah',
             emptyTrash: 'Kosongkan Sampah',
-            trashDescription: 'Catatan di Sampah akan dihapus permanen setelah 7 hari.',
+            trashDescription: 'Catatan di Sampah dapat dipulihkan selama 7 hari. Aplikasi dapat membersihkan catatan kedaluwarsa saat memuat; jadwal harian perlu dikonfigurasi.',
             noTrash: 'Sampah kosong.',
             daysRemaining: 'Tersisa',
             settingsDescription: 'Kelola profil, tampilan, dan data akun.',
@@ -1018,7 +1163,7 @@ export default function HomePage() {
             delete: 'Delete Permanently',
             moveToTrash: 'Move to Trash',
             emptyTrash: 'Empty Trash',
-            trashDescription: 'Notes in Trash are permanently deleted after 7 days.',
+            trashDescription: 'Notes in Trash can be restored for 7 days. The app may purge expired notes when loading; a daily schedule must be configured separately.',
             noTrash: 'Trash is empty.',
             daysRemaining: 'Remaining',
             settingsDescription: 'Manage your profile, appearance, and account data.',
@@ -1071,17 +1216,8 @@ export default function HomePage() {
             newMemo: 'New note',
         }
 
-    const getMemoDisplayContent = (memoContent: string) => memoContent.replace(
-        /resource:\/\/([^\s)]+)/,
-        (reference, encodedPath: string) => {
-            try {
-                const path = decodeURIComponent(encodedPath)
-                return resourceUrlByPath.get(path) ?? reference
-            } catch {
-                return reference
-            }
-        }
-    )
+    const getMemoDisplayContent = (memoContent: string) =>
+        replaceResourceReferences(memoContent, (path) => resourceUrlByPath.get(path))
 
     const renderMemoCard = (memo: Memo) => (
         <MemoCard
@@ -1099,6 +1235,8 @@ export default function HomePage() {
             handleTagClick={handleTagClick}
             handleOpenMemo={handleOpenMemo}
             getMemoDisplayContent={getMemoDisplayContent}
+            handleToggleChecklist={handleToggleChecklist}
+            checklistSavingIds={checklistSavingIds}
         />
     )
 
@@ -1454,6 +1592,9 @@ export default function HomePage() {
                                 submitting={submitting}
                                 labels={labels}
                                 language={language}
+                                onEditorFocus={() => {
+                                    activeEditorTargetRef.current = 'memo'
+                                }}
                             />
                         ) : (
                             <div>
@@ -1529,9 +1670,18 @@ export default function HomePage() {
                 setEditContent={setEditContent}
                 editVisibility={editVisibility}
                 setEditVisibility={setEditVisibility}
+                editTextareaRef={editTextareaRef}
+                onEditorFocus={() => {
+                    activeEditorTargetRef.current = 'edit'
+                }}
+                openUploadPicker={openUploadPicker}
+                insertSnippet={insertSnippet}
                 handleSaveMemoEdit={handleSaveMemoEdit}
+                handleToggleChecklist={handleToggleChecklist}
+                checklistSavingIds={checklistSavingIds}
                 labels={labels}
                 language={language}
+                error={error}
                 getMemoDisplayContent={getMemoDisplayContent}
                 deleteTarget={deleteTarget}
                 setDeleteTarget={setDeleteTarget}

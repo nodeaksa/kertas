@@ -1,6 +1,6 @@
 'use client'
 
-import type { Dispatch, FormEvent, RefObject, SetStateAction } from 'react'
+import { useEffect, useState, type Dispatch, type FormEvent, type RefObject, type SetStateAction } from 'react'
 import { Download, LogOut, Palette, Upload, User } from 'lucide-react'
 import type { AppLabels, FontSize, Language, Theme } from '@/types/kertas'
 
@@ -41,6 +41,14 @@ export default function SettingsView({
     handleChangePassword,
     handleLogout,
 }: SettingsViewProps) {
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        // A mount guard keeps the server and first client render identical.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setMounted(true)
+    }, [])
+
     return (
         <section className="space-y-4 sm:space-y-5">
             <div>
@@ -72,7 +80,7 @@ export default function SettingsView({
                 </label>
                 <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400">
                     {labels.theme}
-                    <select value={theme} onChange={(event) => void handleThemeChange(event.target.value as Theme)} className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
+                    <select value={mounted ? theme : 'system'} onChange={(event) => void handleThemeChange(event.target.value as Theme)} className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
                         <option value="light">Light</option>
                         <option value="dark">Dark</option>
                         <option value="system">System</option>
