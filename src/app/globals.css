@@ -69,3 +69,14 @@ html[data-font-size="large"] {
 .dark .app-shell textarea::placeholder {
   color: #71717a;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
