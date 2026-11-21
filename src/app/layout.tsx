@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
+import ThemeSync from "@/components/ThemeSync";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -28,12 +29,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col font-sans">
         <Script id="theme-preference" strategy="beforeInteractive">
-          {`const savedTheme = localStorage.getItem('kertas-theme');
+          {`try {
+const savedTheme = localStorage.getItem('kertas-theme');
 const theme = savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system' ? savedTheme : 'system';
 const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 document.documentElement.classList.toggle('dark', isDark);
-document.documentElement.dataset.theme = theme;`}
+document.documentElement.dataset.theme = theme;
+document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+} catch {}`}
         </Script>
+        <ThemeSync />
         {children}
       </body>
     </html>

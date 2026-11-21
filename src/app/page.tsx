@@ -156,18 +156,11 @@ export default function HomePage() {
 
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-        const applyTheme = () => {
-            const isDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches)
-            document.documentElement.classList.toggle('dark', isDark)
-            document.documentElement.dataset.theme = theme
-        }
-
-        applyTheme()
+        const isDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches)
+        document.documentElement.classList.toggle('dark', isDark)
+        document.documentElement.dataset.theme = theme
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light'
         document.documentElement.dataset.fontSize = fontSize
-        if (theme !== 'system') return
-
-        mediaQuery.addEventListener('change', applyTheme)
-        return () => mediaQuery.removeEventListener('change', applyTheme)
     }, [fontSize, theme])
 
     useEffect(() => {
