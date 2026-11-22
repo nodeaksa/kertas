@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.3] - 2026-11-22
+
+### Added
+
+- Memo panjang kini diringkas secara responsif (15 baris di mobile, 20 baris di desktop) dengan kontrol Show more/Show less tanpa mengubah konten asli.
+- Timeline, Daily, Archive, dan Trash kini memuat memo per halaman (20 item) dengan tombol Load more; pencarian didebounce 300 ms.
+
+### Changed
+
+- Memo di Sampah tidak lagi dihapus otomatis setelah 7 hari; memo dan lampiran tetap ada sampai dipulihkan atau dihapus permanen secara manual.
+
 ## [1.2.2] - 2026-11-22
 
 ### Fixed
@@ -124,6 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.2.3]: https://github.com/nodeaksa/kertas/releases/tag/v1.2.3
 [1.2.2]: https://github.com/nodeaksa/kertas/releases/tag/v1.2.2
 [1.2.1]: https://github.com/nodeaksa/kertas/releases/tag/v1.2.1
 [1.2.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.2.0

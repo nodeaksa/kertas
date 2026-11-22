@@ -128,8 +128,8 @@ export default function Modals({
         ? ''
         : isMoveToTrash
             ? (language === 'id'
-                ? 'Catatan dapat dipulihkan selama 7 hari. Aplikasi dapat menghapusnya saat memuat; jadwal purge harian perlu dikonfigurasi.'
-                : 'This note can be restored for 7 days. The app may purge it on load; a daily purge schedule must be configured.')
+                ? 'Catatan di Sampah tidak akan dihapus otomatis. Kamu dapat memulihkannya atau menghapusnya permanen secara manual kapan saja.'
+                : 'Notes in Trash are not deleted automatically. You can restore or permanently delete them manually at any time.')
             : modalDeleteTarget.type === 'memo'
                 ? (language === 'id'
                     ? 'Catatan ini akan dihapus secara permanen dan tidak bisa dikembalikan.'

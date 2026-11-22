@@ -2,15 +2,12 @@
 
 import type { Dispatch, SetStateAction } from 'react'
 import { Search } from 'lucide-react'
-import type { ActiveTab, AppLabels, TagCount } from '@/types/kertas'
+import type { AppLabels, TagCount } from '@/types/kertas'
 
 type RightPanelProps = {
     searchQuery: string
     setSearchQuery: Dispatch<SetStateAction<string>>
-    fetchMemos: (tagFilter?: string | null, query?: string, dateFilter?: string | null, archived?: boolean, includeDeleted?: boolean) => Promise<boolean>
     selectedTag: string | null
-    selectedDate: string | null
-    activeTab: ActiveTab
     heatmapCells: { dateStr: string; count: number }[]
     handleDateClick: (dateStr: string) => void
     getHeatColor: (count: number) => string
@@ -22,10 +19,7 @@ type RightPanelProps = {
 export default function RightPanel({
     searchQuery,
     setSearchQuery,
-    fetchMemos,
     selectedTag,
-    selectedDate,
-    activeTab,
     heatmapCells,
     handleDateClick,
     getHeatColor,
@@ -42,13 +36,6 @@ export default function RightPanel({
                     value={searchQuery}
                     onChange={(event) => {
                         setSearchQuery(event.target.value)
-                        fetchMemos(
-                            selectedTag,
-                            event.target.value,
-                            selectedDate,
-                            activeTab === 'archived',
-                            activeTab === 'trash'
-                        )
                     }}
                     placeholder={labels.search}
                     className="w-full pl-9 pr-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-600"
