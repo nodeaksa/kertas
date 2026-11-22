@@ -45,7 +45,7 @@ export default function EditorToolbar({
     const buttonClass = 'rounded-lg p-1.5 transition hover:bg-zinc-100 dark:hover:bg-zinc-800'
 
     return (
-        <div className="flex min-w-0 flex-wrap items-center gap-1 text-gray-500 dark:text-zinc-400">
+        <div className="flex min-w-0 flex-nowrap items-center gap-1 whitespace-nowrap text-gray-500 dark:text-zinc-400">
             <button type="button" title={labels.image} aria-label={labels.image} onMouseDown={(event) => event.preventDefault()} onClick={() => upload(true)} className={buttonClass}>
                 <ImageIcon className="h-4 w-4" />
             </button>

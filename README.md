@@ -13,7 +13,7 @@
   ![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?logo=supabase)
   ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
   ![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38BDF8?logo=tailwindcss)
-  ![Version](https://img.shields.io/badge/Version-v1.1.2-18181b)
+  ![Version](https://img.shields.io/badge/Version-v1.2.0-18181b)
 
 </div>
 
@@ -30,6 +30,7 @@
 ## 🚀 Features
 
 - 📝 **Markdown notes** — write with full GFM support (tables, checkboxes, code blocks)
+- 🔒 **Private notes** — notes are only available to their owner
 - 🏷️ **Auto-tagging** — use `#hashtags` inline; tags are extracted automatically
 - 📎 **File attachments** — upload and manage resources linked to your notes
 - 📅 **Activity heatmap** — see your writing streak at a glance
@@ -98,12 +99,12 @@ This repository does **not** contain the base database schema, table-creation mi
 
 - Supabase Auth email/password sign-in.
 - `profiles`: `id` (matching `auth.users.id`), `username`, and `theme`.
-- `memos`: `id`, `user_id`, `content`, `tags` (text array), `visibility`, `archived`, `created_at`, and `updated_at`.
+- `memos`: `id`, `user_id`, `content`, `tags` (text array), the existing `visibility` column, `archived`, `created_at`, and `updated_at`. The app stores and displays only private notes; it writes `private` to this legacy column for compatibility.
 - `resources`: `id`, `user_id`, nullable `memo_id`, `storage_path`, `filename`, `mime_type`, `size_bytes`, and `created_at`.
 - A private Storage bucket named `resources`.
 - RLS enabled on all tables and policies that restrict rows to their owner. Storage policies must likewise restrict reads, uploads, and deletes to the authenticated owner (uploaded paths begin with that user's ID).
 
-The app calculates tags and activity counts from the caller's visible, non-trash memos, so it does not require `my_tags()` or `memo_daily_counts()` RPCs. The repository does not supply the base tables or policies, so those must be created and tested in your own Supabase project before using the app. Do not disable RLS as a workaround.
+The app calculates tags from the caller's private, non-archived, non-trash memos and activity counts from private, non-trash memos, so it does not require `my_tags()` or `memo_daily_counts()` RPCs. The repository does not supply the base tables or policies, so those must be created and tested in your own Supabase project before using the app. Do not disable RLS as a workaround.
 
 ### Apply the repository migrations
 
@@ -129,7 +130,7 @@ The UI's 7-day restore window is enforced by the purge query. The current browse
 2. Set a high-entropy `PURGE_CRON_SECRET` in the Edge Function secret store (`npx supabase secrets set PURGE_CRON_SECRET=YOUR_RANDOM_VALUE`) and add the same value as a GitHub Actions secret. Also add GitHub Actions secrets named `SUPABASE_URL` and `SUPABASE_ANON_KEY`. The existing keep-alive workflow separately expects `SUPABASE_ANON_KEY`.
 3. Enable GitHub Actions for the repository. `Purge expired trash` is scheduled daily at 03:15 UTC (10:15 WIB) and can also be started manually from the Actions tab. Scheduled runs can be delayed by GitHub; the function reads and processes expired memos in pages of 100 until the eligible queue is exhausted or the function runtime ends.
 
-The function's gateway requires a valid Supabase JWT and the function checks the separate cron secret. It uses Supabase's server-side `SUPABASE_SERVICE_ROLE_KEY` only within the Edge Function to call the migration's service-role-only RPC; never copy that key to GitHub, `.env.local`, browser code, or a `NEXT_PUBLIC_` variable. The function removes owner-scoped, non-shared Storage objects first, then deletes resource metadata and the expired memo atomically. If Storage removal or the database operation fails, the memo remains eligible for a later retry; repeating removal is safe. These steps configure the schedule in your own deployment; no live Supabase project is modified by this repository change.
+The function's gateway requires a valid Supabase JWT and the function checks the separate cron secret. It uses Supabase's server-side `SUPABASE_SERVICE_ROLE_KEY` only within the Edge Function to call the migration's service-role-only RPC; never copy that key to GitHub, `.env.local`, browser code, or a `NEXT_PUBLIC_` variable. The function removes owner-scoped Storage objects first, then deletes resource metadata and the expired memo atomically. If Storage removal or the database operation fails, the memo remains eligible for a later retry; repeating removal is safe. These steps configure the schedule in your own deployment; no live Supabase project is modified by this repository change.
 
 ---
 

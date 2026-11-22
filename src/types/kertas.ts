@@ -9,7 +9,6 @@ export type Memo = {
     id: string
     content: string
     tags: string[]
-    visibility: 'private' | 'public'
     created_at: string
     updated_at?: string | null
     archived: boolean
@@ -127,9 +126,6 @@ export type AppLabels = {
     createdAt: string
     updatedAt: string
     notUpdated: string
-    private: string
-    public: string
-    visibility: string
     toggleTheme: string
     newMemo: string
 }

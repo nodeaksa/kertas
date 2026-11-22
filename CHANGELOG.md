@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-11-22
+
+### Changed
+
+- Hitungan tag di halaman utama hanya mencakup catatan privat yang tidak diarsip dan tidak berada di Sampah.
+- Editor catatan dan modal Edit menggunakan tata letak yang lebih responsif pada perangkat mobile; hanya area teks yang menggulir saat keyboard terbuka.
+
+### Removed
+
+- Menghapus pengaturan dan label visibilitas publik/privat; catatan baru dan impor selalu disimpan sebagai privat, dan aplikasi hanya menampilkan catatan milik pengguna sendiri.
+
+### Fixed
+
+- Menambahkan konfigurasi viewport `interactiveWidget: resizes-content` agar konten menyesuaikan ruang saat keyboard mobile muncul.
+
 ## [1.1.2] - 2026-11-21
 
 ### Fixed
@@ -97,6 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.2.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.2.0
 [1.1.2]: https://github.com/nodeaksa/kertas/releases/tag/v1.1.2
 [1.1.1]: https://github.com/nodeaksa/kertas/releases/tag/v1.1.1
 [1.1.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.1.0

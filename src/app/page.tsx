@@ -36,6 +36,7 @@ export default function HomePage() {
 
     const [username, setUsername] = useState('username')
     const [userId, setUserId] = useState<string | null>(null)
+    const userIdRef = useRef<string | null>(null)
     const [memos, setMemos] = useState<Memo[]>([])
     const [tagsList, setTagsList] = useState<TagCount[]>([])
     const [resources, setResources] = useState<Resource[]>([])
@@ -43,7 +44,6 @@ export default function HomePage() {
     const [dailyCounts, setDailyCounts] = useState<Record<string, number>>({})
     const [activeTab, setActiveTab] = useState<ActiveTab>('memos')
     const [content, setContent] = useState('')
-    const [visibility, setVisibility] = useState<'private' | 'public'>('private')
     const [selectedTag, setSelectedTag] = useState<string | null>(null)
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
@@ -56,7 +56,6 @@ export default function HomePage() {
     const [selectedMemo, setSelectedMemo] = useState<Memo | null>(null)
     const [editingMemo, setEditingMemo] = useState(false)
     const [editContent, setEditContent] = useState('')
-    const [editVisibility, setEditVisibility] = useState<'private' | 'public'>('private')
     const [uploadPurpose, setUploadPurpose] = useState<UploadPurpose>('memo')
     const [checklistSavingIds, setChecklistSavingIds] = useState<Set<string>>(() => new Set())
     const [error, setError] = useState<string | null>(null)
@@ -168,6 +167,11 @@ export default function HomePage() {
 
     const permanentlyDeleteMemos = useCallback(async (memosToDelete: Pick<Memo, 'id' | 'content'>[]): Promise<boolean> => {
         if (memosToDelete.length === 0) return true
+        const ownerId = userIdRef.current
+        if (!ownerId) {
+            reportError('Sesi pengguna tidak tersedia.')
+            return false
+        }
 
         const memoIds = new Set(memosToDelete.map((memo) => memo.id))
         const referencedPaths = new Set<string>()
@@ -184,6 +188,7 @@ export default function HomePage() {
         const { data: resourceRows, error: resourcesError } = await supabase
             .from('resources')
             .select('id, storage_path, memo_id')
+            .eq('user_id', ownerId)
         if (resourcesError) {
             reportError(resourcesError.message)
             return false
@@ -209,14 +214,19 @@ export default function HomePage() {
             .map((row) => String((row as Record<string, unknown>).id))
             .filter(Boolean)
         if (resourceIds.length > 0) {
-            const { error } = await supabase.from('resources').delete().in('id', resourceIds)
+            const { error } = await supabase.from('resources').delete().eq('user_id', ownerId).in('id', resourceIds)
             if (error) {
                 reportError(error.message)
                 return false
             }
         }
 
-        const { error } = await supabase.from('memos').delete().in('id', Array.from(memoIds))
+        const { error } = await supabase
+            .from('memos')
+            .delete()
+            .eq('user_id', ownerId)
+            .eq('visibility', 'private')
+            .in('id', Array.from(memoIds))
         if (error) {
             reportError(error.message)
             return false
@@ -228,10 +238,14 @@ export default function HomePage() {
     }, [reportError, supabase])
 
     const purgeExpiredMemos = useCallback(async (): Promise<boolean> => {
+        const ownerId = userIdRef.current
+        if (!ownerId) return false
         const cutoff = new Date(Date.now() - TRASH_RETENTION_MS).toISOString()
         const { data, error } = await supabase
             .from('memos')
             .select('id, content, deleted_at')
+            .eq('user_id', ownerId)
+            .eq('visibility', 'private')
             .not('deleted_at', 'is', null)
             .lt('deleted_at', cutoff)
         if (error) {
@@ -247,9 +261,13 @@ export default function HomePage() {
     }, [permanentlyDeleteMemos, reportError, supabase])
 
     const fetchTrashCount = useCallback(async (): Promise<boolean> => {
+        const ownerId = userIdRef.current
+        if (!ownerId) return false
         const { count, error } = await supabase
             .from('memos')
             .select('id', { count: 'exact', head: true })
+            .eq('user_id', ownerId)
+            .eq('visibility', 'private')
             .not('deleted_at', 'is', null)
         if (error) {
             reportError(error.message)
@@ -266,6 +284,8 @@ export default function HomePage() {
         archived = false,
         includeDeleted = false,
     ): Promise<boolean> => {
+        const ownerId = userIdRef.current
+        if (!ownerId) return false
         const requestId = ++memoFetchSequence.current
         const purgeSucceeded = await purgeExpiredMemos()
         if (!purgeSucceeded) return false
@@ -273,6 +293,8 @@ export default function HomePage() {
         let req = supabase
             .from('memos')
             .select('*')
+            .eq('user_id', ownerId)
+            .eq('visibility', 'private')
         if (includeDeleted) {
             req = req.not('deleted_at', 'is', null).order('deleted_at', { ascending: false })
         } else {
@@ -303,6 +325,8 @@ export default function HomePage() {
     }, [fetchTrashCount, purgeExpiredMemos, reportError, supabase])
 
     const fetchTags = useCallback(async (): Promise<boolean> => {
+        const ownerId = userIdRef.current
+        if (!ownerId) return false
         const requestId = ++tagFetchSequence.current
         const rows: { tags: unknown }[] = []
         let offset = 0
@@ -310,6 +334,9 @@ export default function HomePage() {
             const { data, error } = await supabase
                 .from('memos')
                 .select('tags')
+                .eq('user_id', ownerId)
+                .eq('visibility', 'private')
+                .eq('archived', false)
                 .is('deleted_at', null)
                 .order('id', { ascending: true })
                 .range(offset, offset + 499)
@@ -338,6 +365,8 @@ export default function HomePage() {
     }, [reportError, supabase])
 
     const fetchDailyCounts = useCallback(async (): Promise<boolean> => {
+        const ownerId = userIdRef.current
+        if (!ownerId) return false
         const requestId = ++dailyFetchSequence.current
         const rows: { created_at: string | null }[] = []
         let offset = 0
@@ -345,6 +374,8 @@ export default function HomePage() {
             const { data, error } = await supabase
                 .from('memos')
                 .select('created_at')
+                .eq('user_id', ownerId)
+                .eq('visibility', 'private')
                 .is('deleted_at', null)
                 .order('id', { ascending: true })
                 .range(offset, offset + 499)
@@ -435,6 +466,7 @@ export default function HomePage() {
                 }
 
                 setCalDate(new Date())
+                userIdRef.current = user.id
                 setUserId(user.id)
                 const { data: profile, error: profileError } = await supabase
                     .from('profiles')
@@ -511,14 +543,20 @@ export default function HomePage() {
 
     const handleSaveMemo = async () => {
         if (!content.trim()) return
+        const ownerId = userIdRef.current
+        if (!ownerId) {
+            reportError('Sesi pengguna tidak tersedia.')
+            return
+        }
         setSubmitting(true)
 
         const extractedTags = extractTags(content)
 
         const { error } = await supabase.from('memos').insert({
+            user_id: ownerId,
             content: content.trim(),
             tags: extractedTags,
-            visibility,
+            visibility: 'private',
         })
 
         if (!error) {
@@ -604,6 +642,8 @@ export default function HomePage() {
             .from('memos')
             .update({ archived: action === 'archive' })
             .eq('id', memo.id)
+            .eq('user_id', userIdRef.current ?? '')
+            .eq('visibility', 'private')
             .select('id')
             .maybeSingle()
         if (error) {
@@ -628,6 +668,8 @@ export default function HomePage() {
             .from('memos')
             .update({ deleted_at: new Date().toISOString() })
             .eq('id', memo.id)
+            .eq('user_id', userIdRef.current ?? '')
+            .eq('visibility', 'private')
             .is('deleted_at', null)
             .select('id')
             .maybeSingle()
@@ -663,6 +705,8 @@ export default function HomePage() {
             .from('memos')
             .update({ deleted_at: null })
             .eq('id', id)
+            .eq('user_id', userIdRef.current ?? '')
+            .eq('visibility', 'private')
             .not('deleted_at', 'is', null)
             .select('id')
             .maybeSingle()
@@ -721,6 +765,8 @@ export default function HomePage() {
                             .from('memos')
                             .select('id, content')
                             .eq('id', deleteTarget.id)
+                            .eq('user_id', userIdRef.current ?? '')
+                            .eq('visibility', 'private')
                             .not('deleted_at', 'is', null)
                             .maybeSingle()
                         if (error) {
@@ -737,6 +783,8 @@ export default function HomePage() {
                     const { data, error } = await supabase
                         .from('memos')
                         .select('id, content')
+                        .eq('user_id', userIdRef.current ?? '')
+                        .eq('visibility', 'private')
                         .not('deleted_at', 'is', null)
                     if (error) {
                         reportError(error.message)
@@ -768,6 +816,7 @@ export default function HomePage() {
                     .from('resources')
                     .delete()
                     .eq('id', deleteTarget.id)
+                    .eq('user_id', userIdRef.current ?? '')
                     .select('id')
                     .maybeSingle()
 
@@ -794,7 +843,6 @@ export default function HomePage() {
         setSelectedMemo(memo)
         setEditingMemo(false)
         setEditContent(memo.content)
-        setEditVisibility(memo.visibility)
     }
 
     const handleSaveMemoEdit = async (event: React.FormEvent) => {
@@ -808,9 +856,11 @@ export default function HomePage() {
             .update({
                 content: updatedContent,
                 tags: updatedTags,
-                visibility: editVisibility,
+                visibility: 'private',
             })
             .eq('id', selectedMemo.id)
+            .eq('user_id', userIdRef.current ?? '')
+            .eq('visibility', 'private')
             .select('*')
             .maybeSingle()
 
@@ -855,6 +905,8 @@ export default function HomePage() {
                 .from('memos')
                 .update({ content: updatedContent })
                 .eq('id', memoId)
+                .eq('user_id', userIdRef.current ?? '')
+                .eq('visibility', 'private')
                 .is('deleted_at', null)
             if (updatedAt) updateRequest = updateRequest.eq('updated_at', updatedAt)
             const { data, error } = await updateRequest.select('*').maybeSingle()
@@ -1005,9 +1057,16 @@ export default function HomePage() {
     }
 
     const handleExportMemos = async () => {
+        const ownerId = userIdRef.current
+        if (!ownerId) {
+            reportError('Sesi pengguna tidak tersedia.')
+            return
+        }
         const { data, error } = await supabase
             .from('memos')
             .select('*')
+            .eq('user_id', ownerId)
+            .eq('visibility', 'private')
             .order('created_at', { ascending: false })
         if (error) {
             reportError(error.message)
@@ -1027,6 +1086,11 @@ export default function HomePage() {
         const file = event.target.files?.[0]
         event.target.value = ''
         if (!file) return
+        const ownerId = userIdRef.current
+        if (!ownerId) {
+            reportError('Sesi pengguna tidak tersedia.')
+            return
+        }
 
         try {
             const parsed: unknown = JSON.parse(await file.text())
@@ -1037,9 +1101,10 @@ export default function HomePage() {
                 }
                 const memo = item as Record<string, unknown>
                 return {
+                    user_id: ownerId,
                     content: memo.content,
                     tags: Array.isArray(memo.tags) ? memo.tags.filter((tag): tag is string => typeof tag === 'string') : [],
-                    visibility: memo.visibility === 'public' ? 'public' : 'private',
+                    visibility: 'private',
                     archived: memo.archived === true,
                     ...(typeof memo.created_at === 'string' && Number.isFinite(Date.parse(memo.created_at))
                         ? { created_at: memo.created_at }
@@ -1132,7 +1197,7 @@ export default function HomePage() {
             filterActive: 'Filter aktif:',
             reset: 'Reset',
             saving: 'Menyimpan...',
-            saveMemo: 'Catatan',
+            saveMemo: 'Simpan',
             archivedDescription: 'Catatan yang diarsipkan dapat dipulihkan atau dihapus permanen.',
             noArchived: 'Belum ada catatan yang diarsipkan.',
             noTagsSidebar: 'Belum ada tag',
@@ -1143,9 +1208,6 @@ export default function HomePage() {
             createdAt: 'Dibuat',
             updatedAt: 'Diperbarui',
             notUpdated: 'Belum diperbarui',
-            private: 'Pribadi',
-            public: 'Publik',
-            visibility: 'Visibilitas',
             toggleTheme: 'Ganti tema',
             newMemo: 'Catatan baru',
         }
@@ -1198,7 +1260,7 @@ export default function HomePage() {
             filterActive: 'Active filters:',
             reset: 'Reset',
             saving: 'Saving...',
-            saveMemo: 'Note',
+            saveMemo: 'Save',
             archivedDescription: 'Archived notes can be restored or permanently deleted.',
             noArchived: 'There are no archived notes.',
             noTagsSidebar: 'No tags yet',
@@ -1209,9 +1271,6 @@ export default function HomePage() {
             createdAt: 'Created',
             updatedAt: 'Updated',
             notUpdated: 'Not updated',
-            private: 'Private',
-            public: 'Public',
-            visibility: 'Visibility',
             toggleTheme: 'Toggle theme',
             newMemo: 'New note',
         }
@@ -1584,8 +1643,6 @@ export default function HomePage() {
                                 memoTextareaRef={memoTextareaRef}
                                 content={content}
                                 setContent={setContent}
-                                visibility={visibility}
-                                setVisibility={setVisibility}
                                 openUploadPicker={openUploadPicker}
                                 insertSnippet={insertSnippet}
                                 handleSaveMemo={handleSaveMemo}
@@ -1668,8 +1725,6 @@ export default function HomePage() {
                 setEditingMemo={setEditingMemo}
                 editContent={editContent}
                 setEditContent={setEditContent}
-                editVisibility={editVisibility}
-                setEditVisibility={setEditVisibility}
                 editTextareaRef={editTextareaRef}
                 onEditorFocus={() => {
                     activeEditorTargetRef.current = 'edit'

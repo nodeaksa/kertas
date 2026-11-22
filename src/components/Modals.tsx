@@ -55,8 +55,6 @@ type ModalsProps = {
     setEditingMemo: Dispatch<SetStateAction<boolean>>
     editContent: string
     setEditContent: Dispatch<SetStateAction<string>>
-    editVisibility: 'private' | 'public'
-    setEditVisibility: Dispatch<SetStateAction<'private' | 'public'>>
     editTextareaRef: RefObject<HTMLTextAreaElement | null>
     onEditorFocus: () => void
     openUploadPicker: (purpose: UploadPurpose, imagesOnly?: boolean) => void
@@ -82,8 +80,6 @@ export default function Modals({
     setEditingMemo,
     editContent,
     setEditContent,
-    editVisibility,
-    setEditVisibility,
     editTextareaRef,
     onEditorFocus,
     openUploadPicker,
@@ -163,19 +159,29 @@ export default function Modals({
                 <div
                     role="presentation"
                     onClick={() => setSelectedMemo(null)}
-                    className={`fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/60 p-2 transition-opacity duration-200 sm:items-center sm:p-4 ${memoVisible ? 'opacity-100' : 'opacity-0'}`}
+                    className={`fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-2 transition-opacity duration-200 sm:items-center sm:p-4 ${memoVisible ? 'opacity-100' : 'opacity-0'}`}
                 >
                     <section
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="memo-detail-title"
                         onClick={(event) => event.stopPropagation()}
-                        className={`my-auto w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl transition duration-200 sm:max-h-[90vh] sm:p-6 dark:bg-[#18181b] dark:border-zinc-800 ${memoVisible ? 'translate-y-0 scale-100' : 'translate-y-2 scale-[.98]'}`}
+                        className={`my-auto w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl transition duration-200 sm:p-6 dark:bg-[#18181b] dark:border-zinc-800 ${editingMemo ? 'flex max-h-dvh min-h-0 flex-col overflow-hidden sm:max-h-[90vh]' : 'max-h-dvh overflow-y-auto overscroll-contain sm:max-h-[90vh]'} ${memoVisible ? 'translate-y-0 scale-100' : 'translate-y-2 scale-[.98]'}`}
                     >
-                        <div className="mb-4 flex items-start justify-between gap-4">
+                        <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
                             <h2 id="memo-detail-title" className="text-lg font-semibold text-gray-800 dark:text-zinc-100">
                                 {editingMemo ? labels.edit : labels.memos}
                             </h2>
+                            {editingMemo && (
+                                <button
+                                    type="submit"
+                                    form="memo-edit-form"
+                                    disabled={!editContent.trim()}
+                                    className="ml-auto shrink-0 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500"
+                                >
+                                    {labels.save}
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 aria-label={labels.close}
@@ -186,14 +192,14 @@ export default function Modals({
                             </button>
                         </div>
                         {error && (
-                            <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+                            <p role="alert" className="mb-4 shrink-0 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
                                 {error}
                             </p>
                         )}
 
                         {editingMemo ? (
-                            <form onSubmit={handleSaveMemoEdit} className="space-y-4">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
+                            <form id="memo-edit-form" onSubmit={handleSaveMemoEdit} className="flex min-h-0 flex-1 flex-col">
+                                <label className="flex min-h-0 flex-1 flex-col text-sm font-medium text-gray-700 dark:text-zinc-300">
                                     {labels.memos}
                                     <textarea
                                         ref={editTextareaRef}
@@ -201,46 +207,29 @@ export default function Modals({
                                         value={editContent}
                                         onChange={(event) => setEditContent(event.target.value)}
                                         onFocus={onEditorFocus}
-                                        className="mt-1.5 w-full resize-y rounded-xl border border-zinc-200 p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-zinc-600"
+                                        className="mt-1.5 min-h-0 w-full flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-200 p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-zinc-600"
                                         required
                                     />
                                 </label>
-                                <EditorToolbar
-                                    uploadPurpose="edit"
-                                    openUploadPicker={openUploadPicker}
-                                    insertSnippet={insertSnippet}
-                                    onEditorFocus={onEditorFocus}
-                                    language={language}
-                                />
-                                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
-                                    {labels.visibility}
-                                    <select
-                                        value={editVisibility}
-                                        onChange={(event) => setEditVisibility(event.target.value as 'private' | 'public')}
-                                        className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-                                    >
-                                        <option value="private">{labels.private}</option>
-                                        <option value="public">{labels.public}</option>
-                                    </select>
-                                </label>
-                                <div className="flex justify-end gap-2">
+                                <div className="mt-3 flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                                    <div className="min-w-0 flex-1 overflow-x-auto">
+                                        <EditorToolbar
+                                            uploadPurpose="edit"
+                                            openUploadPicker={openUploadPicker}
+                                            insertSnippet={insertSnippet}
+                                            onEditorFocus={onEditorFocus}
+                                            language={language}
+                                        />
+                                    </div>
                                     <button
                                         type="button"
                                         onClick={() => {
                                             setEditContent(modalMemo.content)
-                                            setEditVisibility(modalMemo.visibility)
                                             setEditingMemo(false)
                                         }}
                                         className="rounded-xl border border-zinc-200 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                     >
                                         {labels.cancel}
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={!editContent.trim()}
-                                        className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500"
-                                    >
-                                        {labels.save}
                                     </button>
                                 </div>
                             </form>
@@ -256,9 +245,6 @@ export default function Modals({
                                     </div>
                                 )}
                                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                                    <span className="rounded-full bg-zinc-100 border border-zinc-200 px-2.5 py-1 text-zinc-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
-                                        {modalMemo.visibility === 'public' ? labels.public : labels.private}
-                                    </span>
                                     {modalMemo.archived && (
                                         <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">{labels.archived}</span>
                                     )}
