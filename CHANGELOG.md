@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Memo panjang kini diringkas secara responsif (15 baris di mobile, 20 baris di desktop) dengan kontrol Show more/Show less tanpa mengubah konten asli.
 - Timeline, Daily, Archive, dan Trash kini memuat memo per halaman (20 item) dengan tombol Load more; pencarian didebounce 300 ms.
 
+### Changed
+
+- Memo di Sampah tidak lagi dihapus otomatis setelah 7 hari; memo dan lampiran tetap ada sampai dipulihkan atau dihapus permanen secara manual.
+
 ## [1.2.2] - 2026-11-22
 
 ### Fixed

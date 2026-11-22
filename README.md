@@ -37,7 +37,7 @@
 - 🗓️ **Mini calendar** — browse notes by date
 - 🔍 **Search** — full-text search across all your notes
 - 📦 **Archive** — archive notes without deleting them
-- 🗑️ **7-day Recycle Bin** — soft-delete notes and restore them during the 7-day retention window; scheduled purge requires the deployment steps below
+- 🗑️ **Recycle Bin (Sampah)** — soft-delete notes; restore or permanently delete them manually at any time
 - 🌙 **Dark / Light / System theme** — full monochrome palette (no eye-searing greens)
 - 🌐 **Bilingual** — Indonesian (`id`) and English (`en`) UI
 - 🔐 **Auth via Supabase** — secure login with email & password
@@ -108,7 +108,7 @@ The app calculates tags from the caller's private, non-archived, non-trash memos
 
 ### Apply the repository migrations
 
-The migrations in `supabase/migrations/` currently add the trash timestamp/index and a narrowly granted purge RPC; they do not create the tables above. Review each migration and apply it to your project, for example with the Supabase CLI:
+The migrations in `supabase/migrations/` add the trash timestamp/index and remove the legacy purge RPC; they do not create the tables above. Review each migration and apply it to your project, for example with the Supabase CLI:
 
 ```bash
 npx supabase login
@@ -116,21 +116,13 @@ npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase db push
 ```
 
-Alternatively, run the reviewed migration SQL in the Supabase SQL Editor in timestamp order. Do not run these commands against a project until its base schema exists and you have reviewed the changes. The scheduled purge RPC assumes `memos.user_id`, `resources.user_id`, `resources.memo_id`, and `resources.storage_path` exist.
+Alternatively, run the reviewed migration SQL in the Supabase SQL Editor in timestamp order. Do not run these commands against a project until its base schema exists and you have reviewed the changes.
 
-### Configure the 7-day purge schedule
+### Trash retention
 
-The UI's 7-day restore window is enforced by the purge query. The current browser app also tries an owner-scoped purge when it fetches notes, but deleting old notes is **not scheduled until you deploy and configure the server-side schedule**. The repository includes an Edge Function and a GitHub Actions schedule:
+Notes moved to Trash remain there until they are restored or permanently deleted manually. The browser app no longer purges notes when loading, and this repository no longer schedules automatic purges.
 
-1. Apply the repository migrations, then deploy the function with the Supabase CLI:
-   ```bash
-   npx supabase functions deploy purge-expired-memos
-   ```
-   The function uses Supabase's server-side `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` environment values. Gateway JWT verification is enabled; the scheduled request uses the anon key plus a separate cron secret.
-2. Set a high-entropy `PURGE_CRON_SECRET` in the Edge Function secret store (`npx supabase secrets set PURGE_CRON_SECRET=YOUR_RANDOM_VALUE`) and add the same value as a GitHub Actions secret. Also add GitHub Actions secrets named `SUPABASE_URL` and `SUPABASE_ANON_KEY`. The existing keep-alive workflow separately expects `SUPABASE_ANON_KEY`.
-3. Enable GitHub Actions for the repository. `Purge expired trash` is scheduled daily at 03:15 UTC (10:15 WIB) and can also be started manually from the Actions tab. Scheduled runs can be delayed by GitHub; the function reads and processes expired memos in pages of 100 until the eligible queue is exhausted or the function runtime ends.
-
-The function's gateway requires a valid Supabase JWT and the function checks the separate cron secret. It uses Supabase's server-side `SUPABASE_SERVICE_ROLE_KEY` only within the Edge Function to call the migration's service-role-only RPC; never copy that key to GitHub, `.env.local`, browser code, or a `NEXT_PUBLIC_` variable. The function removes owner-scoped Storage objects first, then deletes resource metadata and the expired memo atomically. If Storage removal or the database operation fails, the memo remains eligible for a later retry; repeating removal is safe. These steps configure the schedule in your own deployment; no live Supabase project is modified by this repository change.
+The previous `purge-expired-memos` Edge Function may still be deployed in a Supabase project; changing or removing repository files does not update a deployed function. If it was deployed, delete it from Supabase Dashboard → Edge Functions, or deploy this repository's updated handler (which returns HTTP 410) before applying the migration that removes its RPC. No live Supabase project is modified by this repository change.
 
 ---
 

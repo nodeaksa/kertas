@@ -27,7 +27,6 @@ import type {
 } from '@/types/kertas'
 import { replaceChecklistItem, replaceResourceReferences } from '@/lib/markdown'
 
-const TRASH_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 const PAGE_SIZE = 20
 
 type MemoQueryFilters = {
@@ -269,29 +268,6 @@ export default function HomePage() {
         return true
     }, [reportError, supabase])
 
-    const purgeExpiredMemos = useCallback(async (): Promise<boolean> => {
-        const ownerId = userIdRef.current
-        if (!ownerId) return false
-        const cutoff = new Date(Date.now() - TRASH_RETENTION_MS).toISOString()
-        const { data, error } = await supabase
-            .from('memos')
-            .select('id, content, deleted_at')
-            .eq('user_id', ownerId)
-            .eq('visibility', 'private')
-            .not('deleted_at', 'is', null)
-            .lt('deleted_at', cutoff)
-        if (error) {
-            reportError(error.message)
-            return false
-        }
-
-        const expiredMemos = ((data ?? []) as Pick<Memo, 'id' | 'content' | 'deleted_at'>[]).filter(
-            (memo) => memo.deleted_at !== null && memo.deleted_at !== undefined &&
-                Date.now() - new Date(memo.deleted_at).getTime() > TRASH_RETENTION_MS
-        )
-        return permanentlyDeleteMemos(expiredMemos)
-    }, [permanentlyDeleteMemos, reportError, supabase])
-
     const fetchTrashCount = useCallback(async (): Promise<boolean> => {
         const ownerId = userIdRef.current
         if (!ownerId) return false
@@ -336,8 +312,6 @@ export default function HomePage() {
         setMemosLoading(true)
 
         try {
-            const purgeSucceeded = await purgeExpiredMemos()
-            if (!purgeSucceeded) return false
             if (requestId !== memoFetchSequence.current) return true
 
             let req = supabase
@@ -387,7 +361,7 @@ export default function HomePage() {
                 setMemosLoading(false)
             }
         }
-    }, [fetchTrashCount, purgeExpiredMemos, reportError, supabase])
+    }, [fetchTrashCount, reportError, supabase])
 
     const loadMoreMemos = useCallback(async (): Promise<boolean> => {
         const ownerId = userIdRef.current
@@ -1306,9 +1280,8 @@ export default function HomePage() {
             delete: 'Hapus Permanen',
             moveToTrash: 'Pindahkan ke Sampah',
             emptyTrash: 'Kosongkan Sampah',
-            trashDescription: 'Catatan di Sampah dapat dipulihkan selama 7 hari. Aplikasi dapat membersihkan catatan kedaluwarsa saat memuat; jadwal harian perlu dikonfigurasi.',
+            trashDescription: 'Catatan di Sampah tidak akan dihapus otomatis. Pulihkan atau hapus permanen secara manual kapan saja.',
             noTrash: 'Sampah kosong.',
-            daysRemaining: 'Tersisa',
             settingsDescription: 'Kelola profil, tampilan, dan data akun.',
             profile: 'Profil',
             username: 'Username',
@@ -1374,9 +1347,8 @@ export default function HomePage() {
             delete: 'Delete Permanently',
             moveToTrash: 'Move to Trash',
             emptyTrash: 'Empty Trash',
-            trashDescription: 'Notes in Trash can be restored for 7 days. The app may purge expired notes when loading; a daily schedule must be configured separately.',
+            trashDescription: 'Notes in Trash are never deleted automatically. Restore or permanently delete them manually at any time.',
             noTrash: 'Trash is empty.',
-            daysRemaining: 'Remaining',
             settingsDescription: 'Manage your profile, appearance, and account data.',
             profile: 'Profile',
             username: 'Username',

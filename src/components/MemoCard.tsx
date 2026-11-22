@@ -42,7 +42,6 @@ export default function MemoCard({
     handleToggleChecklist,
     checklistSavingIds,
 }: MemoCardProps) {
-    const [now, setNow] = useState<number | null>(null)
     const [menuMounted, setMenuMounted] = useState(false)
     const [menuVisible, setMenuVisible] = useState(false)
     const [isExpanded, setIsExpanded] = useState(false)
@@ -51,11 +50,6 @@ export default function MemoCard({
     const isMenuOpen = openMenuId === memo.id
     const displayContent = getMemoDisplayContent(memo.content)
 
-    useEffect(() => {
-        if (activeTab !== 'trash') return
-        const frame = window.requestAnimationFrame(() => setNow(Date.now()))
-        return () => window.cancelAnimationFrame(frame)
-    }, [activeTab])
     useEffect(() => {
         let frame: number | undefined
         let timeout: number | undefined
@@ -100,10 +94,6 @@ export default function MemoCard({
             images.forEach((image) => image.removeEventListener('load', measureOverflow))
         }
     }, [displayContent])
-    const remainingDays = memo.deleted_at && now !== null
-        ? Math.max(0, Math.ceil((new Date(memo.deleted_at).getTime() + 7 * 24 * 60 * 60 * 1000 - now) / (24 * 60 * 60 * 1000)))
-        : null
-
     type MarkdownNodeWithPosition = { position?: { start?: { line?: number } } }
     const markdownComponents = {
         // Safe image renderer to avoid empty src warnings
@@ -249,11 +239,6 @@ export default function MemoCard({
                             #{tag}
                         </button>
                     ))}
-                </div>
-            )}
-            {activeTab === 'trash' && remainingDays !== null && (
-                <div className="w-fit rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                    {labels.daysRemaining} {remainingDays} {language === 'id' ? 'hari' : 'days'}
                 </div>
             )}
             <div

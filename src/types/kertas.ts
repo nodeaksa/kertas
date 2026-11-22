@@ -87,7 +87,6 @@ export type AppLabels = {
     emptyTrash: string
     trashDescription: string
     noTrash: string
-    daysRemaining: string
     settingsDescription: string
     profile: string
     username: string
