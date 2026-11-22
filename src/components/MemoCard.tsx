@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
@@ -45,7 +45,11 @@ export default function MemoCard({
     const [now, setNow] = useState<number | null>(null)
     const [menuMounted, setMenuMounted] = useState(false)
     const [menuVisible, setMenuVisible] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(false)
+    const [hasOverflow, setHasOverflow] = useState(false)
+    const memoContentRef = useRef<HTMLDivElement>(null)
     const isMenuOpen = openMenuId === memo.id
+    const displayContent = getMemoDisplayContent(memo.content)
 
     useEffect(() => {
         if (activeTab !== 'trash') return
@@ -70,6 +74,32 @@ export default function MemoCard({
             if (timeout !== undefined) window.clearTimeout(timeout)
         }
     }, [isMenuOpen])
+    useEffect(() => {
+        const element = memoContentRef.current
+        if (!element) return
+
+        const measureOverflow = () => {
+            const computedStyle = window.getComputedStyle(element)
+            const parsedLineHeight = Number.parseFloat(computedStyle.lineHeight)
+            const fontSize = Number.parseFloat(computedStyle.fontSize)
+            const lineHeight = Number.isFinite(parsedLineHeight) ? parsedLineHeight : fontSize * 1.5
+            const visibleLines = window.matchMedia('(min-width: 768px)').matches ? 20 : 15
+            setHasOverflow(element.scrollHeight > lineHeight * visibleLines + 1)
+        }
+
+        measureOverflow()
+        const observer = new ResizeObserver(measureOverflow)
+        observer.observe(element)
+        window.addEventListener('resize', measureOverflow)
+        const images = Array.from(element.querySelectorAll('img'))
+        images.forEach((image) => image.addEventListener('load', measureOverflow))
+
+        return () => {
+            observer.disconnect()
+            window.removeEventListener('resize', measureOverflow)
+            images.forEach((image) => image.removeEventListener('load', measureOverflow))
+        }
+    }, [displayContent])
     const remainingDays = memo.deleted_at && now !== null
         ? Math.max(0, Math.ceil((new Date(memo.deleted_at).getTime() + 7 * 24 * 60 * 60 * 1000 - now) / (24 * 60 * 60 * 1000)))
         : null
@@ -226,11 +256,28 @@ export default function MemoCard({
                     {labels.daysRemaining} {remainingDays} {language === 'id' ? 'hari' : 'days'}
                 </div>
             )}
-            <div className="text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5">
+            <div
+                ref={memoContentRef}
+                className={`text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5 ${isExpanded ? '' : 'max-h-[calc(1.625em*15)] overflow-hidden md:max-h-[calc(1.625em*20)]'}`}
+            >
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
-                    {getMemoDisplayContent(memo.content)}
+                    {displayContent}
                 </ReactMarkdown>
             </div>
+            {hasOverflow && (
+                <button
+                    type="button"
+                    aria-expanded={isExpanded}
+                    onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        setIsExpanded((current) => !current)
+                    }}
+                    className="rounded-md text-xs font-medium text-zinc-500 underline decoration-zinc-300 underline-offset-2 hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-zinc-400 dark:decoration-zinc-600 dark:hover:text-zinc-100"
+                >
+                    {isExpanded ? labels.showLess : labels.showMore}
+                </button>
+            )}
             <div className="text-[11px] text-gray-400 dark:text-zinc-500 pt-1">
                 {new Date(memo.created_at).toLocaleString(language === 'id' ? 'id-ID' : 'en-US', {
                     day: 'numeric',

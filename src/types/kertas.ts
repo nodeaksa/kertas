@@ -75,6 +75,11 @@ export type AppLabels = {
     trash: string
     settings: string
     search: string
+    showMore: string
+    showLess: string
+    loadMore: string
+    loadingMore: string
+    loadingMemos: string
     empty: string
     restore: string
     delete: string

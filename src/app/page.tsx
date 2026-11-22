@@ -28,6 +28,15 @@ import type {
 import { replaceChecklistItem, replaceResourceReferences } from '@/lib/markdown'
 
 const TRASH_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
+const PAGE_SIZE = 20
+
+type MemoQueryFilters = {
+    tagFilter: string | null
+    query: string
+    dateFilter: string | null
+    archived: boolean
+    includeDeleted: boolean
+}
 
 export default function HomePage() {
     const [supabase] = useState(createClient)
@@ -38,6 +47,9 @@ export default function HomePage() {
     const [userId, setUserId] = useState<string | null>(null)
     const userIdRef = useRef<string | null>(null)
     const [memos, setMemos] = useState<Memo[]>([])
+    const [memosLoading, setMemosLoading] = useState(false)
+    const [loadingMoreMemos, setLoadingMoreMemos] = useState(false)
+    const [hasMoreMemos, setHasMoreMemos] = useState(false)
     const [tagsList, setTagsList] = useState<TagCount[]>([])
     const [resources, setResources] = useState<Resource[]>([])
     const [trashCount, setTrashCount] = useState(0)
@@ -82,6 +94,18 @@ export default function HomePage() {
         selectionEnd: number
     } | null>(null)
     const memoFetchSequence = useRef(0)
+    const memoListRef = useRef<Memo[]>([])
+    const memoInitialRequestRef = useRef(false)
+    const memoFiltersRef = useRef<MemoQueryFilters>({
+        tagFilter: null,
+        query: '',
+        dateFilter: null,
+        archived: false,
+        includeDeleted: false,
+    })
+    const loadMoreRequestRef = useRef<number | null>(null)
+    const latestMemoFiltersRef = useRef({ selectedTag, selectedDate, activeTab })
+    const previousSearchQueryRef = useRef(searchQuery)
     const tagFetchSequence = useRef(0)
     const dailyFetchSequence = useRef(0)
     const checklistSavingRef = useRef(new Set<string>())
@@ -141,6 +165,14 @@ export default function HomePage() {
         const timeoutId = window.setTimeout(() => setSuccessMessage(null), 5000)
         return () => window.clearTimeout(timeoutId)
     }, [successMessage])
+
+    useEffect(() => {
+        memoListRef.current = memos
+    }, [memos])
+
+    useEffect(() => {
+        latestMemoFiltersRef.current = { selectedTag, selectedDate, activeTab }
+    }, [activeTab, selectedDate, selectedTag])
 
     useEffect(() => {
         if (!preferencesReady || !userId) return
@@ -286,43 +318,150 @@ export default function HomePage() {
     ): Promise<boolean> => {
         const ownerId = userIdRef.current
         if (!ownerId) return false
+        const filters: MemoQueryFilters = {
+            tagFilter: tagFilter ?? null,
+            query: query ?? '',
+            dateFilter: dateFilter ?? null,
+            archived,
+            includeDeleted,
+        }
+        memoFiltersRef.current = filters
         const requestId = ++memoFetchSequence.current
-        const purgeSucceeded = await purgeExpiredMemos()
-        if (!purgeSucceeded) return false
+        loadMoreRequestRef.current = null
+        memoInitialRequestRef.current = true
+        setLoadingMoreMemos(false)
+        setMemos([])
+        memoListRef.current = []
+        setHasMoreMemos(false)
+        setMemosLoading(true)
 
-        let req = supabase
-            .from('memos')
-            .select('*')
-            .eq('user_id', ownerId)
-            .eq('visibility', 'private')
-        if (includeDeleted) {
-            req = req.not('deleted_at', 'is', null).order('deleted_at', { ascending: false })
-        } else {
-            req = req.is('deleted_at', null).eq('archived', archived).order('created_at', { ascending: false })
-        }
-
-        if (tagFilter) {
-            req = req.contains('tags', [tagFilter])
-        }
-        if (query && query.trim() !== '') {
-            req = req.ilike('content', `%${query.trim()}%`)
-        }
-        if (dateFilter) {
-            req = req
-                .gte('created_at', `${dateFilter}T00:00:00`)
-                .lte('created_at', `${dateFilter}T23:59:59`)
-        }
-
-        const { data, error } = await req
-        if (error) {
+        try {
+            const purgeSucceeded = await purgeExpiredMemos()
+            if (!purgeSucceeded) return false
             if (requestId !== memoFetchSequence.current) return true
-            reportError(error.message)
+
+            let req = supabase
+                .from('memos')
+                .select('*', { count: 'exact' })
+                .eq('user_id', ownerId)
+                .eq('visibility', 'private')
+            if (includeDeleted) {
+                req = req.not('deleted_at', 'is', null)
+            } else {
+                req = req.is('deleted_at', null).eq('archived', archived)
+            }
+            req = req.order('created_at', { ascending: false }).order('id', { ascending: false })
+
+            if (tagFilter) {
+                req = req.contains('tags', [tagFilter])
+            }
+            if (query && query.trim() !== '') {
+                req = req.ilike('content', `%${query.trim()}%`)
+            }
+            if (dateFilter) {
+                req = req
+                    .gte('created_at', `${dateFilter}T00:00:00`)
+                    .lte('created_at', `${dateFilter}T23:59:59`)
+            }
+
+            const { data, count, error } = await req.range(0, PAGE_SIZE - 1)
+            if (error) {
+                if (requestId !== memoFetchSequence.current) return true
+                reportError(error.message)
+                return false
+            }
+            if (requestId !== memoFetchSequence.current) return true
+            const page = (data ?? []) as Memo[]
+            memoListRef.current = page
+            setMemos(page)
+            setHasMoreMemos((count ?? page.length) > page.length)
+            return fetchTrashCount()
+        } catch (error) {
+            if (requestId === memoFetchSequence.current) {
+                reportError(error instanceof Error ? error.message : 'Gagal memuat catatan.')
+            }
             return false
+        } finally {
+            if (requestId === memoFetchSequence.current) {
+                memoInitialRequestRef.current = false
+                setMemosLoading(false)
+            }
         }
-        if (requestId !== memoFetchSequence.current) return true
-        if (data) setMemos(data as Memo[])
-        return fetchTrashCount()
     }, [fetchTrashCount, purgeExpiredMemos, reportError, supabase])
+
+    const loadMoreMemos = useCallback(async (): Promise<boolean> => {
+        const ownerId = userIdRef.current
+        if (!ownerId || !hasMoreMemos || memosLoading || memoInitialRequestRef.current || loadMoreRequestRef.current !== null) return false
+
+        const filters = { ...memoFiltersRef.current }
+        const requestId = memoFetchSequence.current
+        const from = memoListRef.current.length
+        loadMoreRequestRef.current = requestId
+        setLoadingMoreMemos(true)
+
+        try {
+            let req = supabase
+                .from('memos')
+                .select('*', { count: 'exact' })
+                .eq('user_id', ownerId)
+                .eq('visibility', 'private')
+            if (filters.includeDeleted) {
+                req = req.not('deleted_at', 'is', null)
+            } else {
+                req = req.is('deleted_at', null).eq('archived', filters.archived)
+            }
+            req = req.order('created_at', { ascending: false }).order('id', { ascending: false })
+
+            if (filters.tagFilter) req = req.contains('tags', [filters.tagFilter])
+            if (filters.query.trim() !== '') req = req.ilike('content', `%${filters.query.trim()}%`)
+            if (filters.dateFilter) {
+                req = req
+                    .gte('created_at', `${filters.dateFilter}T00:00:00`)
+                    .lte('created_at', `${filters.dateFilter}T23:59:59`)
+            }
+
+            const { data, count, error } = await req.range(from, from + PAGE_SIZE - 1)
+            if (requestId !== memoFetchSequence.current) return true
+            if (error) {
+                reportError(error.message)
+                return false
+            }
+
+            const page = (data ?? []) as Memo[]
+            const existingIds = new Set(memoListRef.current.map((memo) => memo.id))
+            const appended = [...memoListRef.current, ...page.filter((memo) => !existingIds.has(memo.id))]
+            memoListRef.current = appended
+            setMemos(appended)
+            setHasMoreMemos(appended.length < (count ?? from + page.length))
+            return fetchTrashCount()
+        } catch (error) {
+            if (requestId === memoFetchSequence.current) {
+                reportError(error instanceof Error ? error.message : 'Gagal memuat catatan berikutnya.')
+            }
+            return false
+        } finally {
+            if (loadMoreRequestRef.current === requestId) {
+                loadMoreRequestRef.current = null
+                setLoadingMoreMemos(false)
+            }
+        }
+    }, [fetchTrashCount, hasMoreMemos, memosLoading, reportError, supabase])
+
+    useEffect(() => {
+        if (previousSearchQueryRef.current === searchQuery) return
+        previousSearchQueryRef.current = searchQuery
+        const timeoutId = window.setTimeout(() => {
+            const filters = latestMemoFiltersRef.current
+            void fetchMemos(
+                filters.selectedTag,
+                searchQuery,
+                filters.selectedDate,
+                filters.activeTab === 'archived',
+                filters.activeTab === 'trash',
+            )
+        }, 300)
+        return () => window.clearTimeout(timeoutId)
+    }, [fetchMemos, searchQuery])
 
     const fetchTags = useCallback(async (): Promise<boolean> => {
         const ownerId = userIdRef.current
@@ -1157,6 +1296,11 @@ export default function HomePage() {
             trash: 'Sampah',
             settings: 'Pengaturan',
             search: 'Cari catatan...',
+            showMore: 'Tampilkan lebih banyak',
+            showLess: 'Tampilkan lebih sedikit',
+            loadMore: 'Muat lebih banyak',
+            loadingMore: 'Memuat catatan berikutnya...',
+            loadingMemos: 'Memuat catatan...',
             empty: 'Belum ada catatan. Mulai tulis catatan pertamamu di atas!',
             restore: 'Pulihkan',
             delete: 'Hapus Permanen',
@@ -1220,6 +1364,11 @@ export default function HomePage() {
             trash: 'Trash',
             settings: 'Settings',
             search: 'Search notes...',
+            showMore: 'Show more',
+            showLess: 'Show less',
+            loadMore: 'Load more',
+            loadingMore: 'Loading more notes...',
+            loadingMemos: 'Loading notes...',
             empty: 'No notes yet. Start writing your first note above!',
             restore: 'Restore',
             delete: 'Delete Permanently',
@@ -1277,6 +1426,19 @@ export default function HomePage() {
 
     const getMemoDisplayContent = (memoContent: string) =>
         replaceResourceReferences(memoContent, (path) => resourceUrlByPath.get(path))
+
+    const renderLoadMoreButton = () => hasMoreMemos ? (
+        <div className="flex justify-center pt-2" role="status" aria-live="polite">
+            <button
+                type="button"
+                disabled={loadingMoreMemos || memosLoading}
+                onClick={() => void loadMoreMemos()}
+                className="min-h-11 rounded-xl border border-zinc-200 bg-white px-5 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 disabled:cursor-wait disabled:opacity-60 dark:border-zinc-800 dark:bg-[#18181b] dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+                {loadingMoreMemos ? labels.loadingMore : labels.loadMore}
+            </button>
+        </div>
+    ) : null
 
     const renderMemoCard = (memo: Memo) => (
         <MemoCard
@@ -1419,16 +1581,7 @@ export default function HomePage() {
                     <input
                         type="search"
                         value={searchQuery}
-                        onChange={(event) => {
-                            setSearchQuery(event.target.value)
-                            fetchMemos(
-                                selectedTag,
-                                event.target.value,
-                                selectedDate,
-                                activeTab === 'archived',
-                                activeTab === 'trash'
-                            )
-                        }}
+                        onChange={(event) => setSearchQuery(event.target.value)}
                         placeholder={labels.search}
                         className="w-full rounded-xl border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:bg-[#18181b] dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-600"
                     />
@@ -1590,12 +1743,13 @@ export default function HomePage() {
                             {labels.trashDescription}
                         </div>
                         {memos.length === 0 ? (
-                            <p className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-gray-500 dark:bg-[#18181b] dark:border-zinc-800 dark:text-zinc-400">{labels.noTrash}</p>
+                            <p className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-gray-500 dark:bg-[#18181b] dark:border-zinc-800 dark:text-zinc-400">{memosLoading ? labels.loadingMemos : labels.noTrash}</p>
                         ) : (
                             <div className="columns-1 md:columns-2 gap-4 space-y-4">
                                 {memos.map(renderMemoCard)}
                             </div>
                         )}
+                        {renderLoadMoreButton()}
                     </section>
                 ) : activeTab === 'daily' ? (
                     <section className="space-y-5">
@@ -1623,7 +1777,7 @@ export default function HomePage() {
                             </div>
                         )}
                         {Object.keys(dailyGroups).length === 0 ? (
-                            <p className="text-sm text-gray-500 dark:text-zinc-400">Belum ada catatan untuk ditinjau.</p>
+                            <p className="text-sm text-gray-500 dark:text-zinc-400">{memosLoading ? labels.loadingMemos : 'Belum ada catatan untuk ditinjau.'}</p>
                         ) : (
                             Object.entries(dailyGroups).map(([day, dayMemos]) => (
                                 <section key={day} className="space-y-3">
@@ -1634,6 +1788,7 @@ export default function HomePage() {
                                 </section>
                             ))
                         )}
+                        {renderLoadMoreButton()}
                     </section>
                 ) : (
                     <>
@@ -1680,10 +1835,13 @@ export default function HomePage() {
                         <div className="columns-1 md:columns-2 gap-4 space-y-4">
                             {memos.length === 0 ? (
                                 <p className="text-sm text-zinc-400 text-center py-10">
-                                    {activeTab === 'archived' ? labels.noArchived : labels.empty}
+                                    {memosLoading
+                                        ? labels.loadingMemos
+                                        : activeTab === 'archived' ? labels.noArchived : labels.empty}
                                 </p>
                             ) : memos.map(renderMemoCard)}
                         </div>
+                        {renderLoadMoreButton()}
                     </>
                 )}
             </main>
@@ -1706,10 +1864,7 @@ export default function HomePage() {
             <RightPanel
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
-                fetchMemos={fetchMemos}
                 selectedTag={selectedTag}
-                selectedDate={selectedDate}
-                activeTab={activeTab}
                 heatmapCells={heatmapCells}
                 handleDateClick={handleDateClick}
                 getHeatColor={getHeatColor}
