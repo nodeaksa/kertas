@@ -172,16 +172,6 @@ export default function Modals({
                             <h2 id="memo-detail-title" className="text-lg font-semibold text-gray-800 dark:text-zinc-100">
                                 {editingMemo ? labels.edit : labels.memos}
                             </h2>
-                            {editingMemo && (
-                                <button
-                                    type="submit"
-                                    form="memo-edit-form"
-                                    disabled={!editContent.trim()}
-                                    className="ml-auto shrink-0 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500"
-                                >
-                                    {labels.save}
-                                </button>
-                            )}
                             <button
                                 type="button"
                                 aria-label={labels.close}
@@ -198,7 +188,7 @@ export default function Modals({
                         )}
 
                         {editingMemo ? (
-                            <form id="memo-edit-form" onSubmit={handleSaveMemoEdit} className="flex min-h-0 flex-1 flex-col">
+                            <form onSubmit={handleSaveMemoEdit} className="flex min-h-0 flex-1 flex-col">
                                 <label className="flex min-h-0 flex-1 flex-col text-sm font-medium text-gray-700 dark:text-zinc-300">
                                     {labels.memos}
                                     <textarea
@@ -211,7 +201,7 @@ export default function Modals({
                                         required
                                     />
                                 </label>
-                                <div className="mt-3 flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                                <div className="mt-2 flex shrink-0 flex-nowrap items-center gap-1.5 border-t border-zinc-100 pt-2 sm:mt-3 sm:gap-3 sm:pt-3 dark:border-zinc-800">
                                     <div className="min-w-0 flex-1 overflow-x-auto">
                                         <EditorToolbar
                                             uploadPurpose="edit"
@@ -221,16 +211,26 @@ export default function Modals({
                                             language={language}
                                         />
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setEditContent(modalMemo.content)
-                                            setEditingMemo(false)
-                                        }}
-                                        className="rounded-xl border border-zinc-200 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                                    >
-                                        {labels.cancel}
-                                    </button>
+                                    <div className="flex shrink-0 flex-nowrap items-center gap-1 sm:gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setEditContent(modalMemo.content)
+                                                setEditingMemo(false)
+                                            }}
+                                            className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-200 px-2 py-1.5 text-xs text-zinc-700 hover:bg-zinc-100 sm:px-4 sm:py-2 sm:text-sm dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                        >
+                                            {labels.cancel}
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={!editContent.trim()}
+                                            className="shrink-0 whitespace-nowrap rounded-xl bg-zinc-900 px-2 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400 sm:px-4 sm:py-2 sm:text-sm dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500"
+                                        >
+                                            <span className="sm:hidden">{language === 'id' ? 'Simpan' : 'Save'}</span>
+                                            <span className="hidden sm:inline">{labels.save}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         ) : (
