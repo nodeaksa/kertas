@@ -133,7 +133,7 @@ export default function MemoCard({
             onClick={() => handleOpenMemo(memo)}
             className="relative break-inside-avoid cursor-pointer bg-white rounded-2xl border border-zinc-200 p-4 shadow-2xs space-y-2.5 hover:border-zinc-400 transition dark:bg-[#18181b] dark:border-zinc-800 dark:hover:border-zinc-600"
         >
-            <div data-memo-menu onClick={(event) => event.stopPropagation()} className="absolute right-3 top-3">
+            <div data-memo-menu onClick={(event) => event.stopPropagation()} className="absolute right-3 top-3 z-10">
                 <button
                     type="button"
                     aria-label="Menu memo"
@@ -141,7 +141,7 @@ export default function MemoCard({
                         event.stopPropagation()
                         setOpenMenuId(openMenuId === memo.id ? null : memo.id)
                     }}
-                    className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                    className="p-1.5 rounded-full bg-white/80 backdrop-blur-sm text-zinc-500 hover:text-zinc-900 hover:bg-white dark:bg-zinc-900/80 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-900 transition-colors"
                 >
                     <MoreHorizontal className="w-4 h-4" />
                 </button>
