@@ -7,6 +7,8 @@ import remarkBreaks from 'remark-breaks'
 import { AlertTriangle, Pencil, X } from 'lucide-react'
 import EditorToolbar from '@/components/EditorToolbar'
 import { replaceChecklistItem } from '@/lib/markdown'
+import useBackLayer from '@/lib/useBackLayer'
+import useVisualViewportVars from '@/lib/useVisualViewportVars'
 import type { AppLabels, DeleteTarget, Language, Memo, UploadPurpose } from '@/types/kertas'
 
 function useDelayedPresence<T>(value: T | null, duration = 220) {
@@ -106,6 +108,15 @@ export default function Modals({
     const confirmBackdropTargetRef = useRef<EventTarget | null>(null)
     const [editTab, setEditTab] = useState<'write' | 'preview'>('write')
     const [prevEditingMemo, setPrevEditingMemo] = useState(editingMemo)
+    useVisualViewportVars(Boolean(selectedMemo))
+    useBackLayer(Boolean(selectedMemo), () => setSelectedMemo(null))
+    useBackLayer(Boolean(selectedMemo) && editingMemo, () => {
+        if (!selectedMemo) return
+        setEditContent(selectedMemo.content)
+        setEditingMemo(false)
+    })
+    useBackLayer(deleteTarget !== null && !confirmLoading, () => setDeleteTarget(null))
+
     if (prevEditingMemo !== editingMemo) {
         setPrevEditingMemo(editingMemo)
         if (!editingMemo && editTab !== 'write') {
@@ -180,14 +191,15 @@ export default function Modals({
                             setSelectedMemo(null)
                         }
                     }}
-                    className={`fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-2 transition-opacity duration-200 sm:items-center sm:p-4 ${memoVisible ? 'opacity-100' : 'opacity-0'}`}
+                    style={{ top: 'var(--vvt, 0px)', height: 'var(--vvh, 100dvh)' }}
+                    className={`fixed inset-x-0 z-50 flex items-end justify-center bg-black/60 p-2 transition-opacity duration-200 sm:items-center sm:p-4 ${memoVisible ? 'opacity-100' : 'opacity-0'}`}
                 >
                     <section
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="memo-detail-title"
                         onClick={(event) => event.stopPropagation()}
-                        className={`my-auto w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl transition duration-200 sm:p-6 dark:bg-[#18181b] dark:border-zinc-800 ${editingMemo ? 'flex max-h-dvh min-h-0 flex-col overflow-hidden sm:max-h-[90vh]' : 'max-h-dvh overflow-y-auto overscroll-contain sm:max-h-[90vh]'} ${memoVisible ? 'translate-y-0 scale-100' : 'translate-y-2 scale-[.98]'}`}
+                        className={`my-auto w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl transition duration-200 sm:p-6 dark:bg-[#18181b] dark:border-zinc-800 ${editingMemo ? 'flex max-h-full min-h-0 flex-col overflow-hidden sm:max-h-[90vh]' : 'flex max-h-[80dvh] min-h-0 flex-col overflow-hidden sm:max-h-[85dvh]'} ${memoVisible ? 'translate-y-0 scale-100' : 'translate-y-2 scale-[.98]'}`}
                     >
                         <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
                             <div className="flex items-center gap-2.5">
@@ -247,13 +259,13 @@ export default function Modals({
                                             value={editContent}
                                             onChange={(event) => setEditContent(event.target.value)}
                                             onFocus={onEditorFocus}
-                                            className="h-[50vh] max-h-[50vh] min-h-0 w-full flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-200 p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 sm:h-[60vh] sm:max-h-[60vh] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-zinc-600"
+                                            className="h-[calc(var(--vvh,100dvh)*0.5)] max-h-[calc(var(--vvh,100dvh)*0.5)] min-h-0 w-full flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-200 p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 sm:h-[60vh] sm:max-h-[60vh] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-zinc-600"
                                             required={editTab === 'write'}
                                         />
                                     </label>
                                 </div>
                                 <div
-                                    className={`h-[50vh] max-h-[50vh] min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 bg-white p-3 sm:h-[60vh] sm:max-h-[60vh] dark:border-zinc-700 dark:bg-zinc-900/50 ${
+                                    className={`h-[calc(var(--vvh,100dvh)*0.5)] max-h-[calc(var(--vvh,100dvh)*0.5)] min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 bg-white p-3 sm:h-[60vh] sm:max-h-[60vh] dark:border-zinc-700 dark:bg-zinc-900/50 ${
                                         editTab === 'preview' ? 'block' : 'hidden'
                                     }`}
                                 >
@@ -340,74 +352,78 @@ export default function Modals({
                                 </div>
                             </form>
                         ) : (
-                            <div className="space-y-5">
-                                {modalMemo.tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {modalMemo.tags.map((tag) => (
-                                            <span key={tag} className="rounded-full bg-zinc-100 border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
-                                                #{tag}
-                                            </span>
-                                        ))}
+                            <div className="flex min-h-0 flex-1 flex-col">
+                                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                                    <div className="space-y-5">
+                                        {modalMemo.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {modalMemo.tags.map((tag) => (
+                                                    <span key={tag} className="rounded-full bg-zinc-100 border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
+                                                        #{tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                                            {modalMemo.archived && (
+                                                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">{labels.archived}</span>
+                                            )}
+                                        </div>
+                                        <div className="prose prose-sm max-w-none break-words text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm, remarkBreaks]}
+                                                components={{
+                                                    li: ({ node, ...props }: React.ComponentProps<'li'> & { node?: MarkdownNodeWithPosition }) => (
+                                                        <li {...props} data-checklist-line={node?.position?.start?.line} />
+                                                    ),
+                                                    input: (props: React.ComponentProps<'input'>) => {
+                                                        return (
+                                                            <input
+                                                                {...props}
+                                                                checked={Boolean(props.checked)}
+                                                                disabled={Boolean(modalMemo.deleted_at) || checklistSavingIds.has(modalMemo.id)}
+                                                                aria-label={language === 'id' ? 'Ubah status checklist' : 'Toggle checklist item'}
+                                                                onClick={(event) => event.stopPropagation()}
+                                                                onChange={(event) => {
+                                                                    event.stopPropagation()
+                                                                    const lineNumber = Number(event.currentTarget.closest('li')?.dataset.checklistLine)
+                                                                    handleToggleChecklist(modalMemo.id, modalMemo.content, lineNumber, event.currentTarget.checked, modalMemo.updated_at)
+                                                                }}
+                                                            />
+                                                        )
+                                                    },
+                                                    img: ({ src, alt, ...props }: { src?: unknown; alt?: string } & React.ImgHTMLAttributes<HTMLImageElement>) => {
+                                                        if (!src || typeof src !== 'string' || src.trim() === '') return null
+                                                        return (
+                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                            <img
+                                                                src={src as string}
+                                                                alt={alt || (language === 'id' ? 'Lampiran gambar' : 'Image attachment')}
+                                                                className="my-2 max-h-64 max-w-full w-auto rounded-lg border border-zinc-200 object-contain dark:border-zinc-800"
+                                                                {...props}
+                                                            />
+                                                        )
+                                                    },
+                                                }}
+                                            >
+                                                {getMemoDisplayContent(modalMemo.content)}
+                                            </ReactMarkdown>
+                                        </div>
+                                        <div className="space-y-1 border-t border-zinc-100 dark:border-zinc-800 pt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                                            <p>
+                                                {labels.createdAt}:{' '}
+                                                {new Date(modalMemo.created_at).toLocaleString(language === 'id' ? 'id-ID' : 'en-US')}
+                                            </p>
+                                            <p>
+                                                {labels.updatedAt}:{' '}
+                                                {modalMemo.updated_at
+                                                    ? new Date(modalMemo.updated_at).toLocaleString(language === 'id' ? 'id-ID' : 'en-US')
+                                                    : labels.notUpdated}
+                                            </p>
+                                        </div>
                                     </div>
-                                )}
-                                <div className="flex flex-wrap items-center gap-2 text-xs">
-                                    {modalMemo.archived && (
-                                        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">{labels.archived}</span>
-                                    )}
                                 </div>
-                                <div className="prose prose-sm max-w-none break-words text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm, remarkBreaks]}
-                                        components={{
-                                            li: ({ node, ...props }: React.ComponentProps<'li'> & { node?: MarkdownNodeWithPosition }) => (
-                                                <li {...props} data-checklist-line={node?.position?.start?.line} />
-                                            ),
-                                            input: (props: React.ComponentProps<'input'>) => {
-                                                return (
-                                                    <input
-                                                        {...props}
-                                                        checked={Boolean(props.checked)}
-                                                        disabled={Boolean(modalMemo.deleted_at) || checklistSavingIds.has(modalMemo.id)}
-                                                        aria-label={language === 'id' ? 'Ubah status checklist' : 'Toggle checklist item'}
-                                                        onClick={(event) => event.stopPropagation()}
-                                                        onChange={(event) => {
-                                                            event.stopPropagation()
-                                                            const lineNumber = Number(event.currentTarget.closest('li')?.dataset.checklistLine)
-                                                            handleToggleChecklist(modalMemo.id, modalMemo.content, lineNumber, event.currentTarget.checked, modalMemo.updated_at)
-                                                        }}
-                                                    />
-                                                )
-                                            },
-                                            img: ({ src, alt, ...props }: { src?: unknown; alt?: string } & React.ImgHTMLAttributes<HTMLImageElement>) => {
-                                                if (!src || typeof src !== 'string' || src.trim() === '') return null
-                                                return (
-                                                    // eslint-disable-next-line @next/next/no-img-element
-                                                    <img
-                                                        src={src as string}
-                                                        alt={alt || (language === 'id' ? 'Lampiran gambar' : 'Image attachment')}
-                                                        className="my-2 max-h-96 w-auto rounded-lg border border-zinc-200 object-contain dark:border-zinc-800"
-                                                        {...props}
-                                                    />
-                                                )
-                                            },
-                                        }}
-                                    >
-                                        {getMemoDisplayContent(modalMemo.content)}
-                                    </ReactMarkdown>
-                                </div>
-                                <div className="space-y-1 border-t border-zinc-100 dark:border-zinc-800 pt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                                    <p>
-                                        {labels.createdAt}:{' '}
-                                        {new Date(modalMemo.created_at).toLocaleString(language === 'id' ? 'id-ID' : 'en-US')}
-                                    </p>
-                                    <p>
-                                        {labels.updatedAt}:{' '}
-                                        {modalMemo.updated_at
-                                            ? new Date(modalMemo.updated_at).toLocaleString(language === 'id' ? 'id-ID' : 'en-US')
-                                            : labels.notUpdated}
-                                    </p>
-                                </div>
-                                <div className="flex justify-end">
+                                <div className="mt-4 flex shrink-0 justify-end border-t border-zinc-100 pt-3 dark:border-zinc-800">
                                     <button
                                         type="button"
                                         onClick={() => setEditingMemo(true)}
