@@ -13,7 +13,7 @@
   ![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?logo=supabase)
   ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
   ![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38BDF8?logo=tailwindcss)
-  ![Version](https://img.shields.io/badge/Version-v1.3.1-18181b)
+  ![Version](https://img.shields.io/badge/Version-v1.2.3-18181b)
 
 </div>
 

@@ -100,16 +100,13 @@ export default function MemoCard({
         img: ({ src, alt, ...props }: { src?: unknown; alt?: string } & React.ImgHTMLAttributes<HTMLImageElement>) => {
             if (!src || typeof src !== 'string' || src.trim() === '') return null;
             return (
-                <span className="my-2 flex h-36 w-full items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 sm:h-48 dark:border-zinc-800 dark:bg-zinc-900">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                        {...props}
-                        src={src}
-                        alt={alt || 'Lampiran gambar'}
-                        loading="lazy"
-                        className="max-h-full max-w-full object-contain"
-                    />
-                </span>
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                    src={src as string}
+                    alt={alt || 'Lampiran gambar'}
+                    className="rounded-lg max-h-96 w-auto object-contain my-2 border border-zinc-200 dark:border-zinc-800"
+                    {...props}
+                />
             );
         },
         li: ({ node, ...props }: React.ComponentProps<'li'> & { node?: MarkdownNodeWithPosition }) => (
@@ -136,119 +133,117 @@ export default function MemoCard({
             onClick={() => handleOpenMemo(memo)}
             className="relative break-inside-avoid cursor-pointer bg-white rounded-2xl border border-zinc-200 p-4 shadow-2xs space-y-2.5 hover:border-zinc-400 transition dark:bg-[#18181b] dark:border-zinc-800 dark:hover:border-zinc-600"
         >
-            <div className="flex items-start justify-between gap-2">
-                {memo.tags && memo.tags.length > 0 && (
-                    <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-                        {memo.tags.map((tag) => (
-                            <button
-                                type="button"
-                                key={tag}
-                                onClick={(event) => {
-                                    event.stopPropagation()
-                                    handleTagClick(tag)
-                                }}
-                                className="max-w-full truncate rounded-full border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                            >
-                                #{tag}
-                            </button>
-                        ))}
-                    </div>
-                )}
-                <div data-memo-menu onClick={(event) => event.stopPropagation()} className="relative z-10 flex shrink-0 justify-end">
-                    <button
-                        type="button"
-                        aria-label="Menu memo"
-                        onClick={(event) => {
-                            event.stopPropagation()
-                            setOpenMenuId(openMenuId === memo.id ? null : memo.id)
-                        }}
-                        className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                    >
-                        <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                    {(isMenuOpen || menuMounted) && (
-                        <div className={`absolute right-0 top-8 z-10 w-44 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg transition duration-150 dark:bg-[#18181b] dark:border-zinc-800 ${menuVisible ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'}`}>
-                            {activeTab === 'trash' ? (
-                                <>
+            <div data-memo-menu onClick={(event) => event.stopPropagation()} className="absolute right-3 top-3">
+                <button
+                    type="button"
+                    aria-label="Menu memo"
+                    onClick={(event) => {
+                        event.stopPropagation()
+                        setOpenMenuId(openMenuId === memo.id ? null : memo.id)
+                    }}
+                    className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                >
+                    <MoreHorizontal className="w-4 h-4" />
+                </button>
+                {(isMenuOpen || menuMounted) && (
+                    <div className={`absolute right-0 top-8 z-10 w-44 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg transition duration-150 dark:bg-[#18181b] dark:border-zinc-800 ${menuVisible ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'}`}>
+                        {activeTab === 'trash' ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation()
+                                        setOpenMenuId(null)
+                                        handleRestoreMemo(memo.id)
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                >
+                                    <RotateCcw className="mr-2 inline h-3.5 w-3.5" />{labels.restore}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation()
+                                        setOpenMenuId(null)
+                                        handlePermanentDeleteMemo(memo.id)
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                >
+                                    <Trash2 className="mr-2 inline h-3.5 w-3.5" />{labels.delete}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation()
+                                        setOpenMenuId(null)
+                                        handleOpenMemo(memo)
+                                        setEditingMemo(true)
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                >
+                                    <Pencil className="mr-2 inline h-3.5 w-3.5" />{labels.edit}
+                                </button>
+                                {memo.archived ? (
                                     <button
                                         type="button"
                                         onClick={(event) => {
                                             event.stopPropagation()
-                                            setOpenMenuId(null)
-                                            handleRestoreMemo(memo.id)
+                                            void handleMemoAction(memo, 'restore')
                                         }}
                                         className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                     >
                                         <RotateCcw className="mr-2 inline h-3.5 w-3.5" />{labels.restore}
                                     </button>
+                                ) : (
                                     <button
                                         type="button"
                                         onClick={(event) => {
                                             event.stopPropagation()
-                                            setOpenMenuId(null)
-                                            handlePermanentDeleteMemo(memo.id)
-                                        }}
-                                        className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                    >
-                                        <Trash2 className="mr-2 inline h-3.5 w-3.5" />{labels.delete}
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={(event) => {
-                                            event.stopPropagation()
-                                            setOpenMenuId(null)
-                                            handleOpenMemo(memo)
-                                            setEditingMemo(true)
+                                            void handleMemoAction(memo, 'archive')
                                         }}
                                         className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                     >
-                                        <Pencil className="mr-2 inline h-3.5 w-3.5" />{labels.edit}
+                                        <Archive className="mr-2 inline h-3.5 w-3.5" />Arsipkan
                                     </button>
-                                    {memo.archived ? (
-                                        <button
-                                            type="button"
-                                            onClick={(event) => {
-                                                event.stopPropagation()
-                                                void handleMemoAction(memo, 'restore')
-                                            }}
-                                            className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                                        >
-                                            <RotateCcw className="mr-2 inline h-3.5 w-3.5" />{labels.restore}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={(event) => {
-                                                event.stopPropagation()
-                                                void handleMemoAction(memo, 'archive')
-                                            }}
-                                            className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                                        >
-                                            <Archive className="mr-2 inline h-3.5 w-3.5" />Arsipkan
-                                        </button>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={(event) => {
-                                            event.stopPropagation()
-                                            void handleMemoAction(memo, 'delete')
-                                        }}
-                                        className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                    >
-                                        <Trash2 className="mr-2 inline h-3.5 w-3.5" />{labels.moveToTrash}
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    )}
-                </div>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation()
+                                        void handleMemoAction(memo, 'delete')
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                >
+                                    <Trash2 className="mr-2 inline h-3.5 w-3.5" />{labels.moveToTrash}
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
             </div>
+            {memo.tags && memo.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pr-8">
+                    {memo.tags.map((tag) => (
+                        <button
+                            type="button"
+                            key={tag}
+                            onClick={(event) => {
+                                event.stopPropagation()
+                                handleTagClick(tag)
+                            }}
+                            className="px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200 text-xs font-medium hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 dark:hover:bg-zinc-700"
+                        >
+                            #{tag}
+                        </button>
+                    ))}
+                </div>
+            )}
             <div
                 ref={memoContentRef}
-                className={`text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_pre]:border [&_pre]:border-zinc-700 [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_pre]:shadow-sm [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5 ${isExpanded ? '' : 'max-h-[calc(1.625em*15)] overflow-hidden md:max-h-[calc(1.625em*20)]'}`}
+                className={`text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5 ${isExpanded ? '' : 'max-h-[calc(1.625em*15)] overflow-hidden md:max-h-[calc(1.625em*20)]'}`}
             >
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
                     {displayContent}

@@ -7,20 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.3.1] - 2026-11-23
-
-### Improved
-
-- Chip tagar pada kartu memo kini berada di baris header yang sama dengan menu titik tiga.
-
-## [1.3.0] - 2026-11-23
-
-### Improved
-
-- Lampiran gambar di kartu memo kini tampil sebagai thumbnail berbingkai dengan ukuran terbatas; gambar penuh tetap bisa dilihat di detail memo.
-- Blok kode Markdown mendapatkan border yang lebih jelas.
-- Menu titik tiga memakai ruang header tersendiri agar tidak menimpa teks, kode, atau gambar memo.
-
 ## [1.2.3] - 2026-11-22
 
 ### Added
@@ -149,8 +135,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[1.3.1]: https://github.com/nodeaksa/kertas/releases/tag/v1.3.1
-[1.3.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.3.0
 [1.2.3]: https://github.com/nodeaksa/kertas/releases/tag/v1.2.3
 [1.2.2]: https://github.com/nodeaksa/kertas/releases/tag/v1.2.2
 [1.2.1]: https://github.com/nodeaksa/kertas/releases/tag/v1.2.1
