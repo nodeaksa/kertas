@@ -101,6 +101,8 @@ export default function Modals({
     const { item: displayedDeleteTarget, visible: confirmVisible } = useDelayedPresence(deleteTarget)
     const modalMemo = displayedMemo
     const modalDeleteTarget = displayedDeleteTarget
+    const memoBackdropTargetRef = useRef<EventTarget | null>(null)
+    const confirmBackdropTargetRef = useRef<EventTarget | null>(null)
     type MarkdownNodeWithPosition = { position?: { start?: { line?: number } } }
 
     useEffect(() => {
@@ -158,7 +160,17 @@ export default function Modals({
             {modalMemo && (
                 <div
                     role="presentation"
-                    onClick={() => setSelectedMemo(null)}
+                    onMouseDown={(event) => {
+                        memoBackdropTargetRef.current = event.target
+                    }}
+                    onClick={(event) => {
+                        if (
+                            memoBackdropTargetRef.current === event.currentTarget &&
+                            event.target === event.currentTarget
+                        ) {
+                            setSelectedMemo(null)
+                        }
+                    }}
                     className={`fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-2 transition-opacity duration-200 sm:items-center sm:p-4 ${memoVisible ? 'opacity-100' : 'opacity-0'}`}
                 >
                     <section
@@ -307,8 +319,17 @@ export default function Modals({
             {modalDeleteTarget && (
                 <div
                     role="presentation"
-                    onClick={() => {
-                        if (!confirmLoading) setDeleteTarget(null)
+                    onMouseDown={(event) => {
+                        confirmBackdropTargetRef.current = event.target
+                    }}
+                    onClick={(event) => {
+                        if (
+                            !confirmLoading &&
+                            confirmBackdropTargetRef.current === event.currentTarget &&
+                            event.target === event.currentTarget
+                        ) {
+                            setDeleteTarget(null)
+                        }
                     }}
                     className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 transition-opacity duration-200 ${confirmVisible ? 'opacity-100' : 'opacity-0'}`}
                 >
