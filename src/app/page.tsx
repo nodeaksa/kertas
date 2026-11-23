@@ -27,6 +27,7 @@ import type {
 } from '@/types/kertas'
 import { replaceChecklistItem, replaceResourceReferences } from '@/lib/markdown'
 import { getLabels } from '@/lib/i18n'
+import useBackLayer from '@/lib/useBackLayer'
 
 const PAGE_SIZE = 20
 
@@ -735,6 +736,9 @@ export default function HomePage() {
             fetchResources(userId)
         }
     }
+
+    useBackLayer(mobileMenuOpen, () => setMobileMenuOpen(false))
+    useBackLayer(activeTab !== 'memos' || Boolean(selectedTag) || Boolean(selectedDate), () => navigateTo('memos'))
 
     const handleTagClick = (tag: string | null) => {
         const nextTag = selectedTag === tag ? null : tag
