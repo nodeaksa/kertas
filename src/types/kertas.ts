@@ -132,4 +132,6 @@ export type AppLabels = {
     notUpdated: string
     toggleTheme: string
     newMemo: string
+    write: string
+    preview: string
 }

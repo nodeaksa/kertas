@@ -66,4 +66,6 @@ export const idLabels: AppLabels = {
     notUpdated: 'Belum diperbarui',
     toggleTheme: 'Ganti tema',
     newMemo: 'Catatan baru',
+    write: 'Tulis',
+    preview: 'Pratinjau',
 }

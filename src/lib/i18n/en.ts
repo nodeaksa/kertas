@@ -66,4 +66,6 @@ export const enLabels: AppLabels = {
     notUpdated: 'Not updated',
     toggleTheme: 'Toggle theme',
     newMemo: 'New note',
+    write: 'Write',
+    preview: 'Preview',
 }

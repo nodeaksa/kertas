@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { AlertTriangle, Pencil, X } from 'lucide-react'
 import EditorToolbar from '@/components/EditorToolbar'
+import { replaceChecklistItem } from '@/lib/markdown'
 import type { AppLabels, DeleteTarget, Language, Memo, UploadPurpose } from '@/types/kertas'
 
 function useDelayedPresence<T>(value: T | null, duration = 220) {
@@ -103,6 +104,14 @@ export default function Modals({
     const modalDeleteTarget = displayedDeleteTarget
     const memoBackdropTargetRef = useRef<EventTarget | null>(null)
     const confirmBackdropTargetRef = useRef<EventTarget | null>(null)
+    const [editTab, setEditTab] = useState<'write' | 'preview'>('write')
+    const [prevEditingMemo, setPrevEditingMemo] = useState(editingMemo)
+    if (prevEditingMemo !== editingMemo) {
+        setPrevEditingMemo(editingMemo)
+        if (!editingMemo && editTab !== 'write') {
+            setEditTab('write')
+        }
+    }
     type MarkdownNodeWithPosition = { position?: { start?: { line?: number } } }
 
     useEffect(() => {
@@ -181,9 +190,37 @@ export default function Modals({
                         className={`my-auto w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl transition duration-200 sm:p-6 dark:bg-[#18181b] dark:border-zinc-800 ${editingMemo ? 'flex max-h-dvh min-h-0 flex-col overflow-hidden sm:max-h-[90vh]' : 'max-h-dvh overflow-y-auto overscroll-contain sm:max-h-[90vh]'} ${memoVisible ? 'translate-y-0 scale-100' : 'translate-y-2 scale-[.98]'}`}
                     >
                         <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
-                            <h2 id="memo-detail-title" className="text-lg font-semibold text-gray-800 dark:text-zinc-100">
-                                {editingMemo ? labels.edit : labels.memos}
-                            </h2>
+                            <div className="flex items-center gap-2.5">
+                                <h2 id="memo-detail-title" className="text-lg font-semibold text-gray-800 dark:text-zinc-100">
+                                    {editingMemo ? labels.edit : labels.memos}
+                                </h2>
+                                {editingMemo && (
+                                    <div className="flex rounded-xl bg-zinc-100 p-0.5 dark:bg-zinc-800">
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditTab('write')}
+                                            className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                                                editTab === 'write'
+                                                    ? 'bg-white text-zinc-900 shadow-2xs dark:bg-zinc-900 dark:text-zinc-100'
+                                                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                            }`}
+                                        >
+                                            {labels.write}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditTab('preview')}
+                                            className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                                                editTab === 'preview'
+                                                    ? 'bg-white text-zinc-900 shadow-2xs dark:bg-zinc-900 dark:text-zinc-100'
+                                                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                            }`}
+                                        >
+                                            {labels.preview}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                             <button
                                 type="button"
                                 aria-label={labels.close}
@@ -201,27 +238,84 @@ export default function Modals({
 
                         {editingMemo ? (
                             <form onSubmit={handleSaveMemoEdit} className="flex min-h-0 flex-1 flex-col">
-                                <label className="flex min-h-0 flex-1 flex-col text-sm font-medium text-gray-700 dark:text-zinc-300">
-                                    {labels.memos}
-                                    <textarea
-                                        ref={editTextareaRef}
-                                        rows={12}
-                                        value={editContent}
-                                        onChange={(event) => setEditContent(event.target.value)}
-                                        onFocus={onEditorFocus}
-                                        className="mt-1.5 min-h-0 w-full flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-200 p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-zinc-600"
-                                        required
-                                    />
-                                </label>
+                                <div className={`flex min-h-0 flex-1 flex-col ${editTab === 'write' ? '' : 'hidden'}`}>
+                                    <label className="flex min-h-0 flex-1 flex-col text-sm font-medium text-gray-700 dark:text-zinc-300">
+                                        <span className="sr-only">{labels.memos}</span>
+                                        <textarea
+                                            ref={editTextareaRef}
+                                            rows={12}
+                                            value={editContent}
+                                            onChange={(event) => setEditContent(event.target.value)}
+                                            onFocus={onEditorFocus}
+                                            className="min-h-0 w-full flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-200 p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-zinc-600"
+                                            required={editTab === 'write'}
+                                        />
+                                    </label>
+                                </div>
+                                <div
+                                    className={`min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900/50 ${
+                                        editTab === 'preview' ? 'block' : 'hidden'
+                                    }`}
+                                >
+                                    {editContent.trim() ? (
+                                        <div className="prose prose-sm max-w-none break-words text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm, remarkBreaks]}
+                                                components={{
+                                                    li: ({ node, ...props }: React.ComponentProps<'li'> & { node?: MarkdownNodeWithPosition }) => (
+                                                        <li {...props} data-checklist-line={node?.position?.start?.line} />
+                                                    ),
+                                                    input: (props: React.ComponentProps<'input'>) => (
+                                                        <input
+                                                            {...props}
+                                                            checked={Boolean(props.checked)}
+                                                            aria-label={language === 'id' ? 'Ubah status checklist' : 'Toggle checklist item'}
+                                                            onClick={(event) => event.stopPropagation()}
+                                                            onChange={(event) => {
+                                                                event.stopPropagation()
+                                                                const lineNumber = Number(event.currentTarget.closest('li')?.dataset.checklistLine)
+                                                                if (Number.isFinite(lineNumber)) {
+                                                                    setEditContent((prev) => replaceChecklistItem(prev, lineNumber, event.currentTarget.checked) ?? prev)
+                                                                }
+                                                            }}
+                                                        />
+                                                    ),
+                                                    img: ({ src, alt, ...props }: { src?: unknown; alt?: string } & React.ImgHTMLAttributes<HTMLImageElement>) => {
+                                                        if (!src || typeof src !== 'string' || src.trim() === '') return null
+                                                        return (
+                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                            <img
+                                                                src={src as string}
+                                                                alt={alt || (language === 'id' ? 'Lampiran gambar' : 'Image attachment')}
+                                                                className="my-2 max-h-96 w-auto rounded-lg border border-zinc-200 object-contain dark:border-zinc-800"
+                                                                {...props}
+                                                            />
+                                                        )
+                                                    },
+                                                }}
+                                            >
+                                                {getMemoDisplayContent(editContent)}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm italic text-zinc-400 dark:text-zinc-500">
+                                            {language === 'id' ? 'Tidak ada konten untuk dipratinjau.' : 'No content to preview.'}
+                                        </p>
+                                    )}
+                                </div>
                                 <div className="mt-2 flex shrink-0 flex-nowrap items-center gap-1.5 border-t border-zinc-100 pt-2 sm:mt-3 sm:gap-3 sm:pt-3 dark:border-zinc-800">
                                     <div className="min-w-0 flex-1 overflow-x-auto">
-                                        <EditorToolbar
-                                            uploadPurpose="edit"
-                                            openUploadPicker={openUploadPicker}
-                                            insertSnippet={insertSnippet}
-                                            onEditorFocus={onEditorFocus}
-                                            language={language}
-                                        />
+                                        {editTab === 'write' ? (
+                                            <EditorToolbar
+                                                uploadPurpose="edit"
+                                                openUploadPicker={openUploadPicker}
+                                                insertSnippet={insertSnippet}
+                                                onEditorFocus={onEditorFocus}
+                                                language={language}
+                                            />
+                                        ) : (
+                                            <div />
+                                        )}
                                     </div>
                                     <div className="flex shrink-0 flex-nowrap items-center gap-1 sm:gap-2">
                                         <button
@@ -281,6 +375,18 @@ export default function Modals({
                                                             const lineNumber = Number(event.currentTarget.closest('li')?.dataset.checklistLine)
                                                             handleToggleChecklist(modalMemo.id, modalMemo.content, lineNumber, event.currentTarget.checked, modalMemo.updated_at)
                                                         }}
+                                                    />
+                                                )
+                                            },
+                                            img: ({ src, alt, ...props }: { src?: unknown; alt?: string } & React.ImgHTMLAttributes<HTMLImageElement>) => {
+                                                if (!src || typeof src !== 'string' || src.trim() === '') return null
+                                                return (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img
+                                                        src={src as string}
+                                                        alt={alt || (language === 'id' ? 'Lampiran gambar' : 'Image attachment')}
+                                                        className="my-2 max-h-96 w-auto rounded-lg border border-zinc-200 object-contain dark:border-zinc-800"
+                                                        {...props}
                                                     />
                                                 )
                                             },
