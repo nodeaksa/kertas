@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- Tautan di isi catatan kini berwarna biru dan bergaris bawah, membuka tautan web di tab baru, serta tidak membuka detail catatan saat diklik.
+
+### Fixed
+
+- Menambahkan jarak antarparagraf pada isi catatan tanpa mengubah pemrosesan Markdown.
+
 ## [1.3.1] - 2026-11-23
 
 ### Fixed

@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { Archive, MoreHorizontal, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import MarkdownLink from '@/components/MarkdownLink'
 import type { ActiveTab, AppLabels, Memo, MemoAction } from '@/types/kertas'
 
 type MemoCardProps = {
@@ -96,6 +97,7 @@ export default function MemoCard({
     }, [displayContent])
     type MarkdownNodeWithPosition = { position?: { start?: { line?: number } } }
     const markdownComponents = {
+        a: MarkdownLink,
         // Safe image renderer to avoid empty src warnings
         img: ({ src, alt, ...props }: { src?: unknown; alt?: string } & React.ImgHTMLAttributes<HTMLImageElement>) => {
             if (!src || typeof src !== 'string' || src.trim() === '') return null;
@@ -243,7 +245,7 @@ export default function MemoCard({
             )}
             <div
                 ref={memoContentRef}
-                className={`text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5 ${isExpanded ? '' : 'max-h-[calc(1.625em*15)] overflow-hidden md:max-h-[calc(1.625em*20)]'}`}
+                className={`text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_p+p]:mt-3 [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5 ${isExpanded ? '' : 'max-h-[calc(1.625em*15)] overflow-hidden md:max-h-[calc(1.625em*20)]'}`}
             >
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
                     {displayContent}

@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { AlertTriangle, Pencil, X } from 'lucide-react'
 import EditorToolbar from '@/components/EditorToolbar'
+import MarkdownLink from '@/components/MarkdownLink'
 import { replaceChecklistItem } from '@/lib/markdown'
 import useBackLayer from '@/lib/useBackLayer'
 import useVisualViewportVars from '@/lib/useVisualViewportVars'
@@ -270,10 +271,11 @@ export default function Modals({
                                     }`}
                                 >
                                     {editContent.trim() ? (
-                                        <div className="prose prose-sm max-w-none break-words text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
+                                        <div className="prose prose-sm max-w-none break-words [&_p+p]:mt-3 text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
                                             <ReactMarkdown
                                                 remarkPlugins={[remarkGfm, remarkBreaks]}
                                                 components={{
+                                                    a: MarkdownLink,
                                                     li: ({ node, ...props }: React.ComponentProps<'li'> & { node?: MarkdownNodeWithPosition }) => (
                                                         <li {...props} data-checklist-line={node?.position?.start?.line} />
                                                     ),
@@ -369,10 +371,11 @@ export default function Modals({
                                                 <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">{labels.archived}</span>
                                             )}
                                         </div>
-                                        <div className="prose prose-sm max-w-none break-words text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
+                                        <div className="prose prose-sm max-w-none break-words [&_p+p]:mt-3 text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
                                             <ReactMarkdown
                                                 remarkPlugins={[remarkGfm, remarkBreaks]}
                                                 components={{
+                                                    a: MarkdownLink,
                                                     li: ({ node, ...props }: React.ComponentProps<'li'> & { node?: MarkdownNodeWithPosition }) => (
                                                         <li {...props} data-checklist-line={node?.position?.start?.line} />
                                                     ),
