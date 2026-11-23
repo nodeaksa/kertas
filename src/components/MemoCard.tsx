@@ -100,13 +100,16 @@ export default function MemoCard({
         img: ({ src, alt, ...props }: { src?: unknown; alt?: string } & React.ImgHTMLAttributes<HTMLImageElement>) => {
             if (!src || typeof src !== 'string' || src.trim() === '') return null;
             return (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                    src={src as string}
-                    alt={alt || 'Lampiran gambar'}
-                    className="rounded-lg max-h-96 w-auto object-contain my-2 border border-zinc-200 dark:border-zinc-800"
-                    {...props}
-                />
+                <span className="my-2 flex h-36 w-full items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 sm:h-48 dark:border-zinc-800 dark:bg-zinc-900">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        {...props}
+                        src={src}
+                        alt={alt || 'Lampiran gambar'}
+                        loading="lazy"
+                        className="max-h-full max-w-full object-contain"
+                    />
+                </span>
             );
         },
         li: ({ node, ...props }: React.ComponentProps<'li'> & { node?: MarkdownNodeWithPosition }) => (
@@ -133,7 +136,7 @@ export default function MemoCard({
             onClick={() => handleOpenMemo(memo)}
             className="relative break-inside-avoid cursor-pointer bg-white rounded-2xl border border-zinc-200 p-4 shadow-2xs space-y-2.5 hover:border-zinc-400 transition dark:bg-[#18181b] dark:border-zinc-800 dark:hover:border-zinc-600"
         >
-            <div data-memo-menu onClick={(event) => event.stopPropagation()} className="absolute right-3 top-3">
+            <div data-memo-menu onClick={(event) => event.stopPropagation()} className="relative z-10 flex min-h-6 justify-end">
                 <button
                     type="button"
                     aria-label="Menu memo"
@@ -243,7 +246,7 @@ export default function MemoCard({
             )}
             <div
                 ref={memoContentRef}
-                className={`text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5 ${isExpanded ? '' : 'max-h-[calc(1.625em*15)] overflow-hidden md:max-h-[calc(1.625em*20)]'}`}
+                className={`text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_pre]:border [&_pre]:border-zinc-700 [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_pre]:shadow-sm [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5 ${isExpanded ? '' : 'max-h-[calc(1.625em*15)] overflow-hidden md:max-h-[calc(1.625em*20)]'}`}
             >
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
                     {displayContent}
