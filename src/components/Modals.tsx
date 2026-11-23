@@ -247,13 +247,13 @@ export default function Modals({
                                             value={editContent}
                                             onChange={(event) => setEditContent(event.target.value)}
                                             onFocus={onEditorFocus}
-                                            className="min-h-0 w-full flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-200 p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-zinc-600"
+                                            className="h-[50vh] max-h-[50vh] min-h-0 w-full flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-200 p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 sm:h-[60vh] sm:max-h-[60vh] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-zinc-600"
                                             required={editTab === 'write'}
                                         />
                                     </label>
                                 </div>
                                 <div
-                                    className={`min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900/50 ${
+                                    className={`h-[50vh] max-h-[50vh] min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 bg-white p-3 sm:h-[60vh] sm:max-h-[60vh] dark:border-zinc-700 dark:bg-zinc-900/50 ${
                                         editTab === 'preview' ? 'block' : 'hidden'
                                     }`}
                                 >
@@ -287,7 +287,7 @@ export default function Modals({
                                                             <img
                                                                 src={src as string}
                                                                 alt={alt || (language === 'id' ? 'Lampiran gambar' : 'Image attachment')}
-                                                                className="my-2 max-h-96 w-auto rounded-lg border border-zinc-200 object-contain dark:border-zinc-800"
+                                                                className="my-2 max-h-64 max-w-full w-auto rounded-lg border border-zinc-200 object-contain dark:border-zinc-800"
                                                                 {...props}
                                                             />
                                                         )
