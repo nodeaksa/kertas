@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Menambahkan jarak antarparagraf pada isi catatan tanpa mengubah pemrosesan Markdown.
 
+## [1.4.0] - 2026-11-27
+
+### Added
+
+- Preview Markdown langsung pada editor catatan baru dengan tombol toggle.
+- Tab FileBridge untuk memarkir file sementara, mengunggah dan mengunduh file, serta menghapus file secara manual tanpa penghapusan otomatis.
+- Paste gambar dan file dari clipboard di editor catatan baru, modal edit, tab Lampiran, dan tab FileBridge.
+- Tombol Salin/Copy pada menu kartu catatan untuk menyalin seluruh isi catatan.
+
 ## [1.3.1] - 2026-11-23
 
 ### Fixed
@@ -165,6 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.4.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.4.0
 [1.3.1]: https://github.com/nodeaksa/kertas/releases/tag/v1.3.1
 [1.3.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.3.0
 [1.2.3]: https://github.com/nodeaksa/kertas/releases/tag/v1.2.3

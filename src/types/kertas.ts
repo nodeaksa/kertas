@@ -1,4 +1,4 @@
-export type ActiveTab = 'memos' | 'tags' | 'resources' | 'daily' | 'archived' | 'trash' | 'settings'
+export type ActiveTab = 'memos' | 'tags' | 'resources' | 'filebridge' | 'daily' | 'archived' | 'trash' | 'settings'
 export type Theme = 'light' | 'dark' | 'system'
 export type FontSize = 'small' | 'medium' | 'large'
 export type Language = 'id' | 'en'
@@ -70,6 +70,13 @@ export type AppLabels = {
     memos: string
     tags: string
     resources: string
+    filebridge: string
+    filebridgeDescription: string
+    loadingFiles: string
+    noFiles: string
+    dropFiles: string
+    download: string
+    copy: string
     daily: string
     archived: string
     trash: string

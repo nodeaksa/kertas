@@ -68,4 +68,11 @@ export const idLabels: AppLabels = {
     newMemo: 'Catatan baru',
     write: 'Tulis',
     preview: 'Pratinjau',
+    filebridge: 'FileBridge',
+    filebridgeDescription: 'Parkir file sementara untuk dipindah antar perangkat.',
+    loadingFiles: 'Memuat file...',
+    noFiles: 'Belum ada file yang diparkir.',
+    dropFiles: 'Seret file ke sini atau klik untuk memilih (maks. 50 MB per file)',
+    download: 'Unduh',
+    copy: 'Salin',
 }

@@ -60,6 +60,7 @@ type ModalsProps = {
     editContent: string
     setEditContent: Dispatch<SetStateAction<string>>
     editTextareaRef: RefObject<HTMLTextAreaElement | null>
+    onPasteFiles: (event: React.ClipboardEvent<HTMLTextAreaElement>) => void
     onEditorFocus: () => void
     openUploadPicker: (purpose: UploadPurpose, imagesOnly?: boolean) => void
     insertSnippet: (snippet: string) => void
@@ -85,6 +86,7 @@ export default function Modals({
     editContent,
     setEditContent,
     editTextareaRef,
+    onPasteFiles,
     onEditorFocus,
     openUploadPicker,
     insertSnippet,
@@ -260,6 +262,7 @@ export default function Modals({
                                             value={editContent}
                                             onChange={(event) => setEditContent(event.target.value)}
                                             onFocus={onEditorFocus}
+                                            onPaste={onPasteFiles}
                                             className="h-[calc(var(--vvh,100dvh)*0.5)] max-h-[calc(var(--vvh,100dvh)*0.5)] min-h-0 w-full flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-200 p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 sm:h-[60vh] sm:max-h-[60vh] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-zinc-600"
                                             required={editTab === 'write'}
                                         />

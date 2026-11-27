@@ -4,6 +4,7 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { useTheme } from 'next-themes'
 import {
     Archive,
+    ArrowLeftRight,
     Calendar as CalendarIcon,
     ChevronDown,
     ChevronLeft,
@@ -186,6 +187,7 @@ export default function Sidebar({
                             ['memos', FileText, labels.memos],
                             ['tags', Tag, labels.tags],
                             ['resources', Paperclip, labels.resources],
+                            ['filebridge', ArrowLeftRight, labels.filebridge],
                             ['daily', CalendarIcon, labels.daily],
                             ['archived', Archive, labels.archived],
                             ['trash', Trash2, labels.trash],
@@ -312,7 +314,7 @@ export default function Sidebar({
                         </div>
                     </div>
                     <p className="mt-2 text-center text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
-                        kertas. v1.3.1
+                        kertas. v1.4.0
                     </p>
                 </div>
             </aside>

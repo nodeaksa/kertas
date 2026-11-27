@@ -68,4 +68,11 @@ export const enLabels: AppLabels = {
     newMemo: 'New note',
     write: 'Write',
     preview: 'Preview',
+    filebridge: 'FileBridge',
+    filebridgeDescription: 'Temporary file parking for moving files between devices. Nothing is deleted automatically; delete manually anytime.',
+    loadingFiles: 'Loading files...',
+    noFiles: 'No parked files yet.',
+    dropFiles: 'Drag files here or click to choose (max 50 MB each)',
+    download: 'Download',
+    copy: 'Copy',
 }

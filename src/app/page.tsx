@@ -9,6 +9,7 @@ import MemoCard from '@/components/MemoCard'
 import MemoEditor from '@/components/MemoEditor'
 import Modals from '@/components/Modals'
 import RightPanel from '@/components/RightPanel'
+import FileBridgeView from '@/components/FileBridgeView'
 import SettingsView from '@/components/SettingsView'
 import Sidebar from '@/components/Sidebar'
 import type {
@@ -26,6 +27,7 @@ import type {
     UploadPurpose,
 } from '@/types/kertas'
 import { replaceChecklistItem, replaceResourceReferences } from '@/lib/markdown'
+import { isTextEntryTarget, renamePastedFile } from '@/lib/pasteFiles'
 import { getLabels } from '@/lib/i18n'
 import useBackLayer from '@/lib/useBackLayer'
 
@@ -818,6 +820,17 @@ export default function HomePage() {
         void executeMemoAction(memo, action)
     }
 
+    const handleCopyMemo = async (memo: Memo) => {
+        try {
+            await navigator.clipboard.writeText(memo.content)
+            setSuccessMessage(language === 'id' ? 'Catatan disalin.' : 'Note copied.')
+        } catch {
+            reportError(language === 'id'
+                ? 'Gagal menyalin. Izinkan akses clipboard lalu coba lagi.'
+                : 'Could not copy. Allow clipboard access and try again.')
+        }
+    }
+
     const handleRestoreMemo = async (id: string) => {
         const { data, error } = await supabase
             .from('memos')
@@ -1052,14 +1065,8 @@ export default function HomePage() {
         }
     }
 
-    const handleUploadSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0]
-        event.target.value = ''
-        if (!file || !userId) return
-
-        setSubmitting(true)
-        setError(null)
-        setSuccessMessage(null)
+    const uploadResource = async (file: File): Promise<string | null> => {
+        if (!userId) return null
         const safeName = file.name.replace(/[\\/?#]/g, '_')
         const path = `${userId}/${crypto.randomUUID()}/${safeName}`
         const storage = supabase.storage.from('resources')
@@ -1069,8 +1076,7 @@ export default function HomePage() {
         })
         if (uploadError) {
             reportError(uploadError.message)
-            setSubmitting(false)
-            return
+            return null
         }
 
         const { error: metadataError } = await supabase.from('resources').insert({
@@ -1084,20 +1090,35 @@ export default function HomePage() {
         if (metadataError) {
             const { error: cleanupError } = await storage.remove([path])
             reportError(cleanupError
-                    ? `${metadataError.message} File di Storage juga gagal dibersihkan: ${cleanupError.message}`
-                    : metadataError.message)
+                ? `${metadataError.message} File di Storage juga gagal dibersihkan: ${cleanupError.message}`
+                : metadataError.message)
+            return null
+        }
+
+        const encodedPath = encodeURIComponent(path).replace(/[!'()*]/g, (character) =>
+            `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
+        const resourceLink = `resource://${encodedPath}`
+        const markdownName = file.name.replace(/[\\[\]]/g, '\\$&')
+        return file.type.startsWith('image/')
+            ? `![${markdownName}](${resourceLink})`
+            : `[${markdownName}](${resourceLink})`
+    }
+
+    const handleUploadSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
+        event.target.value = ''
+        if (!file || !userId) return
+
+        setSubmitting(true)
+        setError(null)
+        setSuccessMessage(null)
+        const snippet = await uploadResource(file)
+        if (!snippet) {
             setSubmitting(false)
             return
         }
 
         if (uploadPurpose !== 'library') {
-            const encodedPath = encodeURIComponent(path).replace(/[!'()*]/g, (character) =>
-                `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
-            const resourceLink = `resource://${encodedPath}`
-            const markdownName = file.name.replace(/[\\[\]]/g, '\\$&')
-            const snippet = file.type.startsWith('image/')
-                ? `![${markdownName}](${resourceLink})`
-                : `[${markdownName}](${resourceLink})`
             const target = uploadTargetRef.current
             if (target) {
                 insertSnippet(snippet, target.target, {
@@ -1113,6 +1134,76 @@ export default function HomePage() {
         setSuccessMessage('Lampiran berhasil diunggah.')
         setSubmitting(false)
     }
+
+    const handleEditorPaste = (event: React.ClipboardEvent<HTMLTextAreaElement>, target: 'memo' | 'edit') => {
+        const pasted = Array.from(event.clipboardData.files)
+        if (pasted.length === 0 || !userId) return
+        event.preventDefault()
+        if (submitting) return
+
+        const textarea = event.currentTarget
+        const currentValue = target === 'memo' ? content : editContent
+        const setValue = target === 'memo' ? setContent : setEditContent
+        const start = textarea.selectionStart
+        const end = textarea.selectionEnd
+
+        const jobs = pasted.map((file, index) => ({
+            file: renamePastedFile(file, index),
+            placeholder: `[${language === 'id' ? 'Mengunggah' : 'Uploading'}... ${crypto.randomUUID().slice(0, 8)}]`,
+        }))
+        const inserted = jobs.map((job) => job.placeholder).join('\n')
+        setValue(`${currentValue.slice(0, start)}${inserted}${currentValue.slice(end)}`)
+
+        void (async () => {
+            setSubmitting(true)
+            setError(null)
+            setSuccessMessage(null)
+            let uploaded = 0
+            for (const job of jobs) {
+                const snippet = await uploadResource(job.file)
+                setValue((value) => value.replace(job.placeholder, () => snippet ?? ''))
+                if (snippet) uploaded += 1
+            }
+            if (uploaded > 0) {
+                await fetchResources(userId)
+                setSuccessMessage('Lampiran berhasil diunggah.')
+            }
+            setSubmitting(false)
+        })()
+    }
+
+    const pasteToLibraryRef = useRef<(files: File[]) => Promise<void>>(async () => {})
+
+    useEffect(() => {
+        pasteToLibraryRef.current = async (files) => {
+            if (!userId || submitting) return
+            setSubmitting(true)
+            setError(null)
+            setSuccessMessage(null)
+            let uploaded = 0
+            for (const [index, file] of files.entries()) {
+                if (await uploadResource(renamePastedFile(file, index))) uploaded += 1
+            }
+            if (uploaded > 0) {
+                await fetchResources(userId)
+                setSuccessMessage('Lampiran berhasil diunggah.')
+            }
+            setSubmitting(false)
+        }
+    })
+
+    useEffect(() => {
+        if (activeTab !== 'resources') return
+        const handlePaste = (event: ClipboardEvent) => {
+            if (event.defaultPrevented || isTextEntryTarget(event.target)) return
+            const pasted = Array.from(event.clipboardData?.files ?? [])
+            if (pasted.length === 0) return
+            event.preventDefault()
+            void pasteToLibraryRef.current(pasted)
+        }
+        document.addEventListener('paste', handlePaste)
+        return () => document.removeEventListener('paste', handlePaste)
+    }, [activeTab])
 
     const handleSaveProfile = async (event: React.FormEvent) => {
         event.preventDefault()
@@ -1294,6 +1385,7 @@ export default function HomePage() {
             setOpenMenuId={setOpenMenuId}
             setEditingMemo={setEditingMemo}
             handleMemoAction={handleMemoAction}
+            handleCopyMemo={handleCopyMemo}
             handleRestoreMemo={handleRestoreMemo}
             handlePermanentDeleteMemo={handlePermanentDeleteMemo}
             handleTagClick={handleTagClick}
@@ -1567,6 +1659,8 @@ export default function HomePage() {
                             </div>
                         )}
                     </section>
+                ) : activeTab === 'filebridge' ? (
+                    <FileBridgeView userId={userId} labels={labels} language={language} />
                 ) : activeTab === 'trash' ? (
                     <section className="space-y-4">
                         <div className="flex items-center justify-between gap-3">
@@ -1647,6 +1741,7 @@ export default function HomePage() {
                                 submitting={submitting}
                                 labels={labels}
                                 language={language}
+                                onPasteFiles={(event) => handleEditorPaste(event, 'memo')}
                                 onEditorFocus={() => {
                                     activeEditorTargetRef.current = 'memo'
                                 }}
@@ -1724,6 +1819,7 @@ export default function HomePage() {
                 editContent={editContent}
                 setEditContent={setEditContent}
                 editTextareaRef={editTextareaRef}
+                onPasteFiles={(event) => handleEditorPaste(event, 'edit')}
                 onEditorFocus={() => {
                     activeEditorTargetRef.current = 'edit'
                 }}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
-import { Archive, MoreHorizontal, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { Archive, Copy, MoreHorizontal, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import MarkdownLink from '@/components/MarkdownLink'
 import type { ActiveTab, AppLabels, Memo, MemoAction } from '@/types/kertas'
 
@@ -17,6 +17,7 @@ type MemoCardProps = {
     setOpenMenuId: Dispatch<SetStateAction<string | null>>
     setEditingMemo: Dispatch<SetStateAction<boolean>>
     handleMemoAction: (memo: Memo, action: MemoAction) => void
+    handleCopyMemo: (memo: Memo) => void
     handleRestoreMemo: (id: string) => void
     handlePermanentDeleteMemo: (id: string) => void
     handleTagClick: (tag: string | null) => void
@@ -35,6 +36,7 @@ export default function MemoCard({
     setOpenMenuId,
     setEditingMemo,
     handleMemoAction,
+    handleCopyMemo,
     handleRestoreMemo,
     handlePermanentDeleteMemo,
     handleTagClick,
@@ -130,6 +132,20 @@ export default function MemoCard({
         ),
     }
 
+    const copyButton = (
+        <button
+            type="button"
+            onClick={(event) => {
+                event.stopPropagation()
+                setOpenMenuId(null)
+                void handleCopyMemo(memo)
+            }}
+            className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+            <Copy className="mr-2 inline h-3.5 w-3.5" />{labels.copy}
+        </button>
+    )
+
     return (
         <article
             onClick={() => handleOpenMemo(memo)}
@@ -151,6 +167,7 @@ export default function MemoCard({
                     <div className={`absolute right-0 top-8 z-10 w-44 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg transition duration-150 dark:bg-[#18181b] dark:border-zinc-800 ${menuVisible ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'}`}>
                         {activeTab === 'trash' ? (
                             <>
+                                {copyButton}
                                 <button
                                     type="button"
                                     onClick={(event) => {
@@ -176,6 +193,7 @@ export default function MemoCard({
                             </>
                         ) : (
                             <>
+                                {copyButton}
                                 <button
                                     type="button"
                                     onClick={(event) => {
