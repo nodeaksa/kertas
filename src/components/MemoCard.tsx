@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
-import { Archive, Copy, MoreHorizontal, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { Archive, Copy, MoreHorizontal, Pencil, Pin, RotateCcw, Star, Trash2 } from 'lucide-react'
 import MarkdownLink from '@/components/MarkdownLink'
 import type { ActiveTab, AppLabels, Memo, MemoAction } from '@/types/kertas'
 
@@ -17,6 +17,7 @@ type MemoCardProps = {
     setOpenMenuId: Dispatch<SetStateAction<string | null>>
     setEditingMemo: Dispatch<SetStateAction<boolean>>
     handleMemoAction: (memo: Memo, action: MemoAction) => void
+    handleToggleMemoFlag: (memo: Memo, flag: 'is_favorite' | 'is_pinned') => void
     handleCopyMemo: (memo: Memo) => void
     handleRestoreMemo: (id: string) => void
     handlePermanentDeleteMemo: (id: string) => void
@@ -36,6 +37,7 @@ export default function MemoCard({
     setOpenMenuId,
     setEditingMemo,
     handleMemoAction,
+    handleToggleMemoFlag,
     handleCopyMemo,
     handleRestoreMemo,
     handlePermanentDeleteMemo,
@@ -52,6 +54,11 @@ export default function MemoCard({
     const memoContentRef = useRef<HTMLDivElement>(null)
     const isMenuOpen = openMenuId === memo.id
     const displayContent = getMemoDisplayContent(memo.content)
+    const toggleMemoFlag = (event: React.MouseEvent<HTMLButtonElement>, flag: 'is_favorite' | 'is_pinned') => {
+        event.stopPropagation()
+        setOpenMenuId(null)
+        handleToggleMemoFlag(memo, flag)
+    }
 
     useEffect(() => {
         let frame: number | undefined
@@ -196,6 +203,22 @@ export default function MemoCard({
                                 {copyButton}
                                 <button
                                     type="button"
+                                    onClick={(event) => toggleMemoFlag(event, 'is_favorite')}
+                                    className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                >
+                                    <Star className={`mr-2 inline h-3.5 w-3.5 ${memo.is_favorite ? 'fill-current' : ''}`} />
+                                    {memo.is_favorite ? labels.removeFavorite : labels.favorite}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={(event) => toggleMemoFlag(event, 'is_pinned')}
+                                    className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                >
+                                    <Pin className={`mr-2 inline h-3.5 w-3.5 ${memo.is_pinned ? 'fill-current' : ''}`} />
+                                    {memo.is_pinned ? labels.unpin : labels.pin}
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={(event) => {
                                         event.stopPropagation()
                                         setOpenMenuId(null)
@@ -244,6 +267,12 @@ export default function MemoCard({
                     </div>
                 )}
             </div>
+            {(memo.is_favorite || memo.is_pinned) && (
+                <div className="flex items-center gap-2 pr-8 text-zinc-500 dark:text-zinc-400">
+                    {memo.is_pinned && <span className="inline-flex items-center gap-1 text-[11px]" aria-label={labels.pinned} title={labels.pinned}><Pin className="h-3.5 w-3.5 fill-current" />{labels.pinned}</span>}
+                    {memo.is_favorite && <span className="inline-flex items-center gap-1 text-[11px]" aria-label={labels.favorites} title={labels.favorites}><Star className="h-3.5 w-3.5 fill-current" />{labels.favorites}</span>}
+                </div>
+            )}
             {memo.tags && memo.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pr-8">
                     {memo.tags.map((tag) => (

@@ -39,6 +39,9 @@ type MemoQueryFilters = {
     dateFilter: string | null
     archived: boolean
     includeDeleted: boolean
+    favoriteOnly: boolean
+    pinnedOnly: boolean
+    activeTab: ActiveTab
 }
 
 export default function HomePage() {
@@ -105,6 +108,9 @@ export default function HomePage() {
         dateFilter: null,
         archived: false,
         includeDeleted: false,
+        favoriteOnly: false,
+        pinnedOnly: false,
+        activeTab: 'memos',
     })
     const loadMoreRequestRef = useRef<number | null>(null)
     const latestMemoFiltersRef = useRef({ selectedTag, selectedDate, activeTab })
@@ -295,6 +301,7 @@ export default function HomePage() {
         dateFilter?: string | null,
         archived = false,
         includeDeleted = false,
+        activeTab: ActiveTab = 'memos',
     ): Promise<boolean> => {
         const ownerId = userIdRef.current
         if (!ownerId) return false
@@ -304,6 +311,9 @@ export default function HomePage() {
             dateFilter: dateFilter ?? null,
             archived,
             includeDeleted,
+            favoriteOnly: activeTab === 'favorites',
+            pinnedOnly: activeTab === 'pinned',
+            activeTab,
         }
         memoFiltersRef.current = filters
         const requestId = ++memoFetchSequence.current
@@ -325,10 +335,14 @@ export default function HomePage() {
                 .eq('visibility', 'private')
             if (includeDeleted) {
                 req = req.not('deleted_at', 'is', null)
+            } else if (filters.favoriteOnly || filters.pinnedOnly) {
+                req = req.is('deleted_at', null)
             } else {
                 req = req.is('deleted_at', null).eq('archived', archived)
             }
-            req = req.order('created_at', { ascending: false }).order('id', { ascending: false })
+            if (filters.favoriteOnly) req = req.eq('is_favorite', true)
+            if (filters.pinnedOnly) req = req.eq('is_pinned', true)
+            req = req.order('is_pinned', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false })
 
             if (tagFilter) {
                 req = req.contains('tags', [tagFilter])
@@ -385,10 +399,14 @@ export default function HomePage() {
                 .eq('visibility', 'private')
             if (filters.includeDeleted) {
                 req = req.not('deleted_at', 'is', null)
+            } else if (filters.favoriteOnly || filters.pinnedOnly) {
+                req = req.is('deleted_at', null)
             } else {
                 req = req.is('deleted_at', null).eq('archived', filters.archived)
             }
-            req = req.order('created_at', { ascending: false }).order('id', { ascending: false })
+            if (filters.favoriteOnly) req = req.eq('is_favorite', true)
+            if (filters.pinnedOnly) req = req.eq('is_pinned', true)
+            req = req.order('is_pinned', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false })
 
             if (filters.tagFilter) req = req.contains('tags', [filters.tagFilter])
             if (filters.query.trim() !== '') req = req.ilike('content', `%${filters.query.trim()}%`)
@@ -436,6 +454,7 @@ export default function HomePage() {
                 filters.selectedDate,
                 filters.activeTab === 'archived',
                 filters.activeTab === 'trash',
+                filters.activeTab,
             )
         }, 300)
         return () => window.clearTimeout(timeoutId)
@@ -679,7 +698,7 @@ export default function HomePage() {
         if (!error) {
             setContent('')
             await Promise.all([
-                fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash'),
+                fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash', activeTab),
                 fetchTags(),
                 fetchDailyCounts(),
             ])
@@ -729,11 +748,11 @@ export default function HomePage() {
         setMobileMenuOpen(false)
         setOpenMenuId(null)
         if (tab === 'archived') {
-            fetchMemos(null, searchQuery, null, true)
+            fetchMemos(null, searchQuery, null, true, false, tab)
         } else if (tab === 'trash') {
-            fetchMemos(null, searchQuery, null, false, true)
-        } else if (tab === 'memos' || tab === 'daily') {
-            fetchMemos(null, searchQuery, null, false)
+            fetchMemos(null, searchQuery, null, false, true, tab)
+        } else if (tab === 'memos' || tab === 'daily' || tab === 'favorites' || tab === 'pinned') {
+            fetchMemos(null, searchQuery, null, false, false, tab)
         } else if (tab === 'resources' && userId) {
             fetchResources(userId)
         }
@@ -746,7 +765,7 @@ export default function HomePage() {
         const nextTag = selectedTag === tag ? null : tag
         setSelectedTag(nextTag)
         setActiveTab('memos')
-        fetchMemos(nextTag, searchQuery, selectedDate)
+        fetchMemos(nextTag, searchQuery, selectedDate, false, false, 'memos')
         setMobileMenuOpen(false)
     }
 
@@ -754,7 +773,7 @@ export default function HomePage() {
         const nextDate = selectedDate === dateStr ? null : dateStr
         setSelectedDate(nextDate)
         setActiveTab('memos')
-        fetchMemos(selectedTag, searchQuery, nextDate)
+        fetchMemos(selectedTag, searchQuery, nextDate, false, false, 'memos')
     }
 
     const executeMemoAction = async (memo: Memo, action: 'archive' | 'restore') => {
@@ -776,7 +795,7 @@ export default function HomePage() {
             return
         }
         await Promise.all([
-            fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash'),
+            fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash', activeTab),
             fetchTags(),
             fetchDailyCounts(),
         ])
@@ -818,6 +837,38 @@ export default function HomePage() {
         }
 
         void executeMemoAction(memo, action)
+    }
+
+    const handleToggleMemoFlag = async (memo: Memo, flag: 'is_favorite' | 'is_pinned') => {
+        const nextValue = memo[flag] !== true
+        const { data, error } = await supabase
+            .from('memos')
+            .update({ [flag]: nextValue })
+            .eq('id', memo.id)
+            .eq('user_id', userIdRef.current ?? '')
+            .eq('visibility', 'private')
+            .select('id')
+            .maybeSingle()
+        if (error) {
+            reportError(error.message)
+            return
+        }
+        if (!data) {
+            reportError('Catatan tidak ditemukan atau tidak dapat diperbarui.')
+            return
+        }
+
+        const updatedMemo = { ...memo, [flag]: nextValue }
+        const updateMemo = (current: Memo | null) => current?.id === memo.id ? { ...current, [flag]: nextValue } : current
+        setMemos((current) => current.map((item) => item.id === memo.id ? updatedMemo : item))
+        memoListRef.current = memoListRef.current.map((item) => item.id === memo.id ? updatedMemo : item)
+        setSelectedMemo(updateMemo)
+        setRandomMemo(updateMemo)
+
+        await fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash', activeTab)
+        setSuccessMessage(flag === 'is_favorite'
+            ? nextValue ? labels.favoriteAdded : labels.favoriteRemoved
+            : nextValue ? labels.pinAdded : labels.pinRemoved)
     }
 
     const handleCopyMemo = async (memo: Memo) => {
@@ -1315,6 +1366,8 @@ export default function HomePage() {
                     tags: Array.isArray(memo.tags) ? memo.tags.filter((tag): tag is string => typeof tag === 'string') : [],
                     visibility: 'private',
                     archived: memo.archived === true,
+                    is_favorite: memo.is_favorite === true,
+                    is_pinned: memo.is_pinned === true,
                     ...(typeof memo.created_at === 'string' && Number.isFinite(Date.parse(memo.created_at))
                         ? { created_at: memo.created_at }
                         : {}),
@@ -1385,6 +1438,7 @@ export default function HomePage() {
             setOpenMenuId={setOpenMenuId}
             setEditingMemo={setEditingMemo}
             handleMemoAction={handleMemoAction}
+            handleToggleMemoFlag={handleToggleMemoFlag}
             handleCopyMemo={handleCopyMemo}
             handleRestoreMemo={handleRestoreMemo}
             handlePermanentDeleteMemo={handlePermanentDeleteMemo}
@@ -1599,7 +1653,7 @@ export default function HomePage() {
                                         onClick={() => {
                                             setSelectedTag(item.tag)
                                             setActiveTab('memos')
-                                            fetchMemos(item.tag, searchQuery, null)
+                                            fetchMemos(item.tag, searchQuery, null, false, false, 'memos')
                                         }}
                                         className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-4 text-left hover:border-zinc-400 dark:border-zinc-800 dark:bg-[#18181b] dark:hover:border-zinc-600"
                                     >
@@ -1661,6 +1715,22 @@ export default function HomePage() {
                     </section>
                 ) : activeTab === 'filebridge' ? (
                     <FileBridgeView userId={userId} labels={labels} language={language} />
+                ) : activeTab === 'favorites' || activeTab === 'pinned' ? (
+                    <section className="space-y-4">
+                        <h1 className="text-xl font-bold text-gray-800 dark:text-zinc-100">
+                            {activeTab === 'favorites' ? labels.favorites : labels.pinned}
+                        </h1>
+                        {memos.length === 0 ? (
+                            <p className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-gray-500 dark:bg-[#18181b] dark:border-zinc-800 dark:text-zinc-400">
+                                {memosLoading ? labels.loadingMemos : activeTab === 'favorites' ? labels.noFavorites : labels.noPinned}
+                            </p>
+                        ) : (
+                            <div className="columns-1 md:columns-2 gap-4 space-y-4">
+                                {memos.map(renderMemoCard)}
+                            </div>
+                        )}
+                        {renderLoadMoreButton()}
+                    </section>
                 ) : activeTab === 'trash' ? (
                     <section className="space-y-4">
                         <div className="flex items-center justify-between gap-3">
@@ -1762,7 +1832,7 @@ export default function HomePage() {
                                     onClick={() => {
                                         setSelectedTag(null)
                                         setSelectedDate(null)
-                                        fetchMemos(null, searchQuery, null)
+                                        fetchMemos(null, searchQuery, null, false, false, 'memos')
                                     }}
                                     className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 underline"
                                 >

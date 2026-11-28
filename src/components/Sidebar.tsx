@@ -14,8 +14,10 @@ import {
     Menu,
     Moon,
     Paperclip,
+    Pin,
     Settings,
     Sun,
+    Star,
     Tag,
     Trash2,
     X,
@@ -185,6 +187,8 @@ export default function Sidebar({
                     <nav className="space-y-1 text-sm">
                         {([
                             ['memos', FileText, labels.memos],
+                            ['favorites', Star, labels.favorites],
+                            ['pinned', Pin, labels.pinned],
                             ['tags', Tag, labels.tags],
                             ['resources', Paperclip, labels.resources],
                             ['filebridge', ArrowLeftRight, labels.filebridge],

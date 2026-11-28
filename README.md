@@ -99,7 +99,7 @@ This repository does **not** contain the base database schema, table-creation mi
 
 - Supabase Auth email/password sign-in.
 - `profiles`: `id` (matching `auth.users.id`), `username`, and `theme`.
-- `memos`: `id`, `user_id`, `content`, `tags` (text array), the existing `visibility` column, `archived`, `created_at`, and `updated_at`. The app stores and displays only private notes; it writes `private` to this legacy column for compatibility.
+- `memos`: `id`, `user_id`, `content`, `tags` (text array), the existing `visibility` column, `archived`, `created_at`, and `updated_at`. The app stores and displays only private notes; it writes `private` to this legacy column for compatibility. The repository migration also adds `is_favorite` and `is_pinned` (both default to `false`) for the optional Favorites and Pinned views.
 - `resources`: `id`, `user_id`, nullable `memo_id`, `storage_path`, `filename`, `mime_type`, `size_bytes`, and `created_at`.
 - A private Storage bucket named `resources`.
 - RLS enabled on all tables and policies that restrict rows to their owner. Storage policies must likewise restrict reads, uploads, and deletes to the authenticated owner (uploaded paths begin with that user's ID).
