@@ -11,8 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Favorite dan Pin untuk memo, termasuk tab khusus Favorit/Disematkan.
-- Migrasi database aditif untuk menyimpan status Favorite dan Pin per memo.
 - Tautan di isi catatan kini berwarna biru dan bergaris bawah, membuka tautan web di tab baru, serta tidak membuka detail catatan saat diklik.
 
 ### Fixed
