@@ -81,7 +81,7 @@ export default function MemoEditor({
                 className="block max-h-[min(9rem,40dvh)] w-full resize-none overflow-y-hidden border-0 bg-transparent p-0 text-sm leading-6 text-zinc-900 placeholder:text-zinc-400 focus:outline-none dark:bg-transparent dark:text-zinc-100 dark:placeholder:text-zinc-500"
             />
             {live && content.trim() && (
-                <div className="mt-3 break-words border-t border-zinc-100 pt-3 text-sm leading-relaxed text-gray-800 dark:border-zinc-800 dark:text-zinc-200 [&_p+p]:mt-3 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-xs [&_pre]:text-gray-100 [&_ul]:space-y-1 [&_input[type=checkbox]]:mr-1.5">
+                <div className="mt-3 break-words border-t border-zinc-100 pt-3 text-sm leading-relaxed text-gray-800 dark:border-zinc-800 dark:text-zinc-200 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_p+p]:mt-3 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-xs [&_pre]:text-gray-100 [&_input[type=checkbox]]:mr-1.5">
                     <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{content}</ReactMarkdown>
                 </div>
             )}

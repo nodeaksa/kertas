@@ -274,7 +274,7 @@ export default function Modals({
                                     }`}
                                 >
                                     {editContent.trim() ? (
-                                        <div className="prose prose-sm max-w-none break-words [&_p+p]:mt-3 text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
+                                        <div className="prose prose-sm max-w-none break-words [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_p+p]:mt-3 text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
                                             <ReactMarkdown
                                                 remarkPlugins={[remarkGfm, remarkBreaks]}
                                                 components={{
@@ -374,7 +374,7 @@ export default function Modals({
                                                 <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">{labels.archived}</span>
                                             )}
                                         </div>
-                                        <div className="prose prose-sm max-w-none break-words [&_p+p]:mt-3 text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
+                                        <div className="prose prose-sm max-w-none break-words [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_p+p]:mt-3 text-zinc-800 dark:text-zinc-200 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-[#262b33] [&_pre]:p-3 [&_pre]:text-zinc-100">
                                             <ReactMarkdown
                                                 remarkPlugins={[remarkGfm, remarkBreaks]}
                                                 components={{
