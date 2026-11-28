@@ -9,13 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-28
+
 ### Added
 
-- Tautan di isi catatan kini berwarna biru dan bergaris bawah, membuka tautan web di tab baru, serta tidak membuka detail catatan saat diklik.
+- Pin catatan (maksimal 5): catatan yang di-pin tampil di bagian "Dipin" di atas feed Catatan saat tidak ada filter tag, pencarian, atau tanggal.
+- Tab Favorit di sidebar dengan badge jumlah. Tombol Pin dan Favorit tersedia di menu titik tiga kartu catatan, dan ikon pin serta bintang tampil di kartu.
+- Migration `20261128100000` menambahkan kolom `pinned_at` dan `favorited_at` pada tabel `memos`, index parsial, serta trigger yang menjaga `updated_at` tidak berubah saat pin atau favorit diubah. Jalankan migration ini sebelum men-deploy.
 
-### Fixed
+### Changed
 
-- Menambahkan jarak antarparagraf pada isi catatan tanpa mengubah pemrosesan Markdown.
+- Mengarsipkan atau memindahkan catatan ke Sampah otomatis melepas pin. Catatan yang diarsipkan atau berada di Sampah tidak ditampilkan di tab Favorit.
 
 ## [1.4.0] - 2026-11-27
 
@@ -25,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tab FileBridge untuk memarkir file sementara, mengunggah dan mengunduh file, serta menghapus file secara manual tanpa penghapusan otomatis.
 - Paste gambar dan file dari clipboard di editor catatan baru, modal edit, tab Lampiran, dan tab FileBridge.
 - Tombol Salin/Copy pada menu kartu catatan untuk menyalin seluruh isi catatan.
+- Tautan di isi catatan kini berwarna biru dan bergaris bawah, membuka tautan web di tab baru, serta tidak membuka detail catatan saat diklik.
+
+### Fixed
+
+- Menambahkan jarak antarparagraf pada isi catatan tanpa mengubah pemrosesan Markdown.
 
 ## [1.3.1] - 2026-11-23
 
@@ -174,6 +183,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.5.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.5.0
 [1.4.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.4.0
 [1.3.1]: https://github.com/nodeaksa/kertas/releases/tag/v1.3.1
 [1.3.0]: https://github.com/nodeaksa/kertas/releases/tag/v1.3.0

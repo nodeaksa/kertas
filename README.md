@@ -13,7 +13,7 @@
   ![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?logo=supabase)
   ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
   ![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38BDF8?logo=tailwindcss)
-  ![Version](https://img.shields.io/badge/Version-v1.4.0-18181b)
+  ![Version](https://img.shields.io/badge/Version-v1.5.0-18181b)
 
 </div>
 
@@ -36,6 +36,8 @@
 - 📅 **Activity heatmap** — see your writing streak at a glance
 - 🗓️ **Mini calendar** — browse notes by date
 - 🔍 **Search** — full-text search across all your notes
+- 📌 **Pin** — pin up to five notes to the top of the Notes feed
+- ⭐ **Favorites** — star notes and browse them from the sidebar
 - 📦 **Archive** — archive notes without deleting them
 - 🗑️ **Recycle Bin (Sampah)** — soft-delete notes; restore or permanently delete them manually at any time
 - 🌙 **Dark / Light / System theme** — full monochrome palette (no eye-searing greens)
@@ -99,7 +101,7 @@ This repository does **not** contain the base database schema, table-creation mi
 
 - Supabase Auth email/password sign-in.
 - `profiles`: `id` (matching `auth.users.id`), `username`, and `theme`.
-- `memos`: `id`, `user_id`, `content`, `tags` (text array), the existing `visibility` column, `archived`, `created_at`, and `updated_at`. The app stores and displays only private notes; it writes `private` to this legacy column for compatibility.
+- `memos`: `id`, `user_id`, `content`, `tags` (text array), the existing `visibility` column, `archived`, `created_at`, `updated_at`, and nullable `pinned_at` and `favorited_at` (`timestamptz`) columns. The app stores and displays only private notes; it writes `private` to this legacy column for compatibility.
 - `resources`: `id`, `user_id`, nullable `memo_id`, `storage_path`, `filename`, `mime_type`, `size_bytes`, and `created_at`.
 - A private Storage bucket named `resources`.
 - RLS enabled on all tables and policies that restrict rows to their owner. Storage policies must likewise restrict reads, uploads, and deletes to the authenticated owner (uploaded paths begin with that user's ID).
@@ -108,7 +110,9 @@ The app calculates tags from the caller's private, non-archived, non-trash memos
 
 ### Apply the repository migrations
 
-The migrations in `supabase/migrations/` add the trash timestamp/index and remove the legacy purge RPC; they do not create the tables above. Review each migration and apply it to your project, for example with the Supabase CLI:
+The migrations in `supabase/migrations/` add the trash timestamp/index and pin/favorite columns, and remove the legacy purge RPC; they do not create the tables above. Review each migration and apply it to your project, for example with the Supabase CLI:
+
+Migration `20261128100000_add_memo_pin_favorite.sql` adds the pin/favorite columns; run it before deploying code that uses them.
 
 ```bash
 npx supabase login

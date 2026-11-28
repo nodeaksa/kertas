@@ -1,4 +1,4 @@
-export type ActiveTab = 'memos' | 'tags' | 'resources' | 'filebridge' | 'daily' | 'archived' | 'trash' | 'settings'
+export type ActiveTab = 'memos' | 'favorites' | 'tags' | 'resources' | 'filebridge' | 'daily' | 'archived' | 'trash' | 'settings'
 export type Theme = 'light' | 'dark' | 'system'
 export type FontSize = 'small' | 'medium' | 'large'
 export type Language = 'id' | 'en'
@@ -13,6 +13,8 @@ export type Memo = {
     updated_at?: string | null
     archived: boolean
     deleted_at?: string | null
+    pinned_at?: string | null
+    favorited_at?: string | null
 }
 
 export type TagCount = {
@@ -68,6 +70,19 @@ export type SettingsOptions = {
 
 export type AppLabels = {
     memos: string
+    favorites: string
+    favoritesDescription: string
+    noFavorites: string
+    pinned: string
+    pin: string
+    unpin: string
+    favorite: string
+    unfavorite: string
+    pinLimitReached: string
+    pinnedAdded: string
+    pinnedRemoved: string
+    favoriteAdded: string
+    favoriteRemoved: string
     tags: string
     resources: string
     filebridge: string

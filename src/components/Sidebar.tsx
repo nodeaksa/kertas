@@ -16,6 +16,7 @@ import {
     Paperclip,
     Settings,
     Sun,
+    Star,
     Tag,
     Trash2,
     X,
@@ -35,6 +36,7 @@ type SidebarProps = {
     navigateTo: (tab: ActiveTab) => void
     tagsList: TagCount[]
     trashCount: number
+    favoriteCount: number
     selectedTag: string | null
     handleTagClick: (tag: string | null) => void
     calDate: Date | null
@@ -59,6 +61,7 @@ export default function Sidebar({
     navigateTo,
     tagsList,
     trashCount,
+    favoriteCount,
     selectedTag,
     handleTagClick,
     calDate,
@@ -185,6 +188,7 @@ export default function Sidebar({
                     <nav className="space-y-1 text-sm">
                         {([
                             ['memos', FileText, labels.memos],
+                            ['favorites', Star, labels.favorites],
                             ['tags', Tag, labels.tags],
                             ['resources', Paperclip, labels.resources],
                             ['filebridge', ArrowLeftRight, labels.filebridge],
@@ -205,6 +209,11 @@ export default function Sidebar({
                                 {tab === 'trash' && (
                                     <span className="ml-auto min-w-5 rounded-full bg-zinc-200 px-1.5 py-0.5 text-center text-[10px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
                                         {trashCount}
+                                    </span>
+                                )}
+                                {tab === 'favorites' && favoriteCount > 0 && (
+                                    <span className="ml-auto min-w-5 rounded-full bg-zinc-200 px-1.5 py-0.5 text-center text-[10px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+                                        {favoriteCount}
                                     </span>
                                 )}
                             </button>
@@ -314,7 +323,7 @@ export default function Sidebar({
                         </div>
                     </div>
                     <p className="mt-2 text-center text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
-                        kertas. v1.4.0
+                        kertas. v1.5.0
                     </p>
                 </div>
             </aside>

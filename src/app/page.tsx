@@ -39,6 +39,8 @@ type MemoQueryFilters = {
     dateFilter: string | null
     archived: boolean
     includeDeleted: boolean
+    favoriteOnly: boolean
+    excludePinned: boolean
 }
 
 export default function HomePage() {
@@ -50,12 +52,14 @@ export default function HomePage() {
     const [userId, setUserId] = useState<string | null>(null)
     const userIdRef = useRef<string | null>(null)
     const [memos, setMemos] = useState<Memo[]>([])
+    const [pinnedMemos, setPinnedMemos] = useState<Memo[]>([])
     const [memosLoading, setMemosLoading] = useState(false)
     const [loadingMoreMemos, setLoadingMoreMemos] = useState(false)
     const [hasMoreMemos, setHasMoreMemos] = useState(false)
     const [tagsList, setTagsList] = useState<TagCount[]>([])
     const [resources, setResources] = useState<Resource[]>([])
     const [trashCount, setTrashCount] = useState(0)
+    const [favoriteCount, setFavoriteCount] = useState(0)
     const [dailyCounts, setDailyCounts] = useState<Record<string, number>>({})
     const [activeTab, setActiveTab] = useState<ActiveTab>('memos')
     const [content, setContent] = useState('')
@@ -105,6 +109,8 @@ export default function HomePage() {
         dateFilter: null,
         archived: false,
         includeDeleted: false,
+        favoriteOnly: false,
+        excludePinned: false,
     })
     const loadMoreRequestRef = useRef<number | null>(null)
     const latestMemoFiltersRef = useRef({ selectedTag, selectedDate, activeTab })
@@ -289,12 +295,61 @@ export default function HomePage() {
         return true
     }, [reportError, supabase])
 
+    const fetchPinnedMemos = useCallback(async (): Promise<boolean> => {
+        const ownerId = userIdRef.current
+        if (!ownerId) return false
+        const { data, error } = await supabase
+            .from('memos')
+            .select('*')
+            .eq('user_id', ownerId)
+            .eq('visibility', 'private')
+            .is('deleted_at', null)
+            .eq('archived', false)
+            .not('pinned_at', 'is', null)
+            .order('pinned_at', { ascending: false })
+            .order('id', { ascending: false })
+            .limit(5)
+        if (error) {
+            reportError(error.message)
+            return false
+        }
+        setPinnedMemos((data ?? []) as Memo[])
+        return true
+    }, [reportError, supabase])
+
+    const fetchFavoriteCount = useCallback(async (): Promise<boolean> => {
+        const ownerId = userIdRef.current
+        if (!ownerId) return false
+        const { count, error } = await supabase
+            .from('memos')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', ownerId)
+            .eq('visibility', 'private')
+            .is('deleted_at', null)
+            .eq('archived', false)
+            .not('favorited_at', 'is', null)
+        if (error) {
+            reportError(error.message)
+            return false
+        }
+        setFavoriteCount(count ?? 0)
+        return true
+    }, [reportError, supabase])
+
+    const fetchMemoCounts = useCallback(async (): Promise<boolean> => {
+        const results = await Promise.all([fetchTrashCount(), fetchPinnedMemos(), fetchFavoriteCount()])
+        return results.every(Boolean)
+    }, [fetchFavoriteCount, fetchPinnedMemos, fetchTrashCount])
+
     const fetchMemos = useCallback(async (
         tagFilter?: string | null,
         query?: string,
         dateFilter?: string | null,
         archived = false,
         includeDeleted = false,
+        favoriteOnly = false,
+        excludePinned = false,
+        refreshCounts = true,
     ): Promise<boolean> => {
         const ownerId = userIdRef.current
         if (!ownerId) return false
@@ -304,6 +359,8 @@ export default function HomePage() {
             dateFilter: dateFilter ?? null,
             archived,
             includeDeleted,
+            favoriteOnly,
+            excludePinned,
         }
         memoFiltersRef.current = filters
         const requestId = ++memoFetchSequence.current
@@ -323,12 +380,16 @@ export default function HomePage() {
                 .select('*', { count: 'exact' })
                 .eq('user_id', ownerId)
                 .eq('visibility', 'private')
-            if (includeDeleted) {
+            if (favoriteOnly) {
+                req = req
+                    .is('deleted_at', null)
+                    .eq('archived', false)
+                    .not('favorited_at', 'is', null)
+            } else if (includeDeleted) {
                 req = req.not('deleted_at', 'is', null)
             } else {
                 req = req.is('deleted_at', null).eq('archived', archived)
             }
-            req = req.order('created_at', { ascending: false }).order('id', { ascending: false })
 
             if (tagFilter) {
                 req = req.contains('tags', [tagFilter])
@@ -342,6 +403,22 @@ export default function HomePage() {
                     .lte('created_at', `${dateFilter}T23:59:59`)
             }
 
+            if (favoriteOnly) {
+                req = req.order('favorited_at', { ascending: false }).order('id', { ascending: false })
+            } else {
+                if (
+                    excludePinned &&
+                    !archived &&
+                    !includeDeleted &&
+                    !tagFilter &&
+                    !query?.trim() &&
+                    !dateFilter
+                ) {
+                    req = req.is('pinned_at', null)
+                }
+                req = req.order('created_at', { ascending: false }).order('id', { ascending: false })
+            }
+
             const { data, count, error } = await req.range(0, PAGE_SIZE - 1)
             if (error) {
                 if (requestId !== memoFetchSequence.current) return true
@@ -353,7 +430,7 @@ export default function HomePage() {
             memoListRef.current = page
             setMemos(page)
             setHasMoreMemos((count ?? page.length) > page.length)
-            return fetchTrashCount()
+            return refreshCounts ? fetchMemoCounts() : true
         } catch (error) {
             if (requestId === memoFetchSequence.current) {
                 reportError(error instanceof Error ? error.message : 'Gagal memuat catatan.')
@@ -365,7 +442,7 @@ export default function HomePage() {
                 setMemosLoading(false)
             }
         }
-    }, [fetchTrashCount, reportError, supabase])
+    }, [fetchMemoCounts, reportError, supabase])
 
     const loadMoreMemos = useCallback(async (): Promise<boolean> => {
         const ownerId = userIdRef.current
@@ -383,12 +460,16 @@ export default function HomePage() {
                 .select('*', { count: 'exact' })
                 .eq('user_id', ownerId)
                 .eq('visibility', 'private')
-            if (filters.includeDeleted) {
+            if (filters.favoriteOnly) {
+                req = req
+                    .is('deleted_at', null)
+                    .eq('archived', false)
+                    .not('favorited_at', 'is', null)
+            } else if (filters.includeDeleted) {
                 req = req.not('deleted_at', 'is', null)
             } else {
                 req = req.is('deleted_at', null).eq('archived', filters.archived)
             }
-            req = req.order('created_at', { ascending: false }).order('id', { ascending: false })
 
             if (filters.tagFilter) req = req.contains('tags', [filters.tagFilter])
             if (filters.query.trim() !== '') req = req.ilike('content', `%${filters.query.trim()}%`)
@@ -396,6 +477,22 @@ export default function HomePage() {
                 req = req
                     .gte('created_at', `${filters.dateFilter}T00:00:00`)
                     .lte('created_at', `${filters.dateFilter}T23:59:59`)
+            }
+
+            if (filters.favoriteOnly) {
+                req = req.order('favorited_at', { ascending: false }).order('id', { ascending: false })
+            } else {
+                if (
+                    filters.excludePinned &&
+                    !filters.archived &&
+                    !filters.includeDeleted &&
+                    !filters.tagFilter &&
+                    !filters.query.trim() &&
+                    !filters.dateFilter
+                ) {
+                    req = req.is('pinned_at', null)
+                }
+                req = req.order('created_at', { ascending: false }).order('id', { ascending: false })
             }
 
             const { data, count, error } = await req.range(from, from + PAGE_SIZE - 1)
@@ -411,7 +508,7 @@ export default function HomePage() {
             memoListRef.current = appended
             setMemos(appended)
             setHasMoreMemos(appended.length < (count ?? from + page.length))
-            return fetchTrashCount()
+            return fetchMemoCounts()
         } catch (error) {
             if (requestId === memoFetchSequence.current) {
                 reportError(error instanceof Error ? error.message : 'Gagal memuat catatan berikutnya.')
@@ -423,7 +520,7 @@ export default function HomePage() {
                 setLoadingMoreMemos(false)
             }
         }
-    }, [fetchTrashCount, hasMoreMemos, memosLoading, reportError, supabase])
+    }, [fetchMemoCounts, hasMoreMemos, memosLoading, reportError, supabase])
 
     useEffect(() => {
         if (previousSearchQueryRef.current === searchQuery) return
@@ -436,6 +533,8 @@ export default function HomePage() {
                 filters.selectedDate,
                 filters.activeTab === 'archived',
                 filters.activeTab === 'trash',
+                filters.activeTab === 'favorites',
+                filters.activeTab === 'memos',
             )
         }, 300)
         return () => window.clearTimeout(timeoutId)
@@ -628,7 +727,7 @@ export default function HomePage() {
                 }
                 setPreferencesReady(true)
 
-                const memosFetched = await fetchMemos()
+                const memosFetched = await fetchMemos(null, '', null, false, false, false, true)
                 if (!memosFetched) {
                     router.replace('/login')
                     return
@@ -679,7 +778,7 @@ export default function HomePage() {
         if (!error) {
             setContent('')
             await Promise.all([
-                fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash'),
+                fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash', activeTab === 'favorites', activeTab === 'memos'),
                 fetchTags(),
                 fetchDailyCounts(),
             ])
@@ -729,11 +828,11 @@ export default function HomePage() {
         setMobileMenuOpen(false)
         setOpenMenuId(null)
         if (tab === 'archived') {
-            fetchMemos(null, searchQuery, null, true)
+            fetchMemos(null, searchQuery, null, true, false, false, false)
         } else if (tab === 'trash') {
-            fetchMemos(null, searchQuery, null, false, true)
-        } else if (tab === 'memos' || tab === 'daily') {
-            fetchMemos(null, searchQuery, null, false)
+            fetchMemos(null, searchQuery, null, false, true, false, false)
+        } else if (tab === 'memos' || tab === 'daily' || tab === 'favorites') {
+            fetchMemos(null, searchQuery, null, false, false, tab === 'favorites', tab === 'memos')
         } else if (tab === 'resources' && userId) {
             fetchResources(userId)
         }
@@ -746,7 +845,7 @@ export default function HomePage() {
         const nextTag = selectedTag === tag ? null : tag
         setSelectedTag(nextTag)
         setActiveTab('memos')
-        fetchMemos(nextTag, searchQuery, selectedDate)
+        fetchMemos(nextTag, searchQuery, selectedDate, false, false, false, true)
         setMobileMenuOpen(false)
     }
 
@@ -754,13 +853,13 @@ export default function HomePage() {
         const nextDate = selectedDate === dateStr ? null : dateStr
         setSelectedDate(nextDate)
         setActiveTab('memos')
-        fetchMemos(selectedTag, searchQuery, nextDate)
+        fetchMemos(selectedTag, searchQuery, nextDate, false, false, false, true)
     }
 
     const executeMemoAction = async (memo: Memo, action: 'archive' | 'restore') => {
         const { data, error } = await supabase
             .from('memos')
-            .update({ archived: action === 'archive' })
+            .update({ archived: action === 'archive', pinned_at: null })
             .eq('id', memo.id)
             .eq('user_id', userIdRef.current ?? '')
             .eq('visibility', 'private')
@@ -776,17 +875,88 @@ export default function HomePage() {
             return
         }
         await Promise.all([
-            fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash'),
+            fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash', activeTab === 'favorites', activeTab === 'memos'),
             fetchTags(),
             fetchDailyCounts(),
         ])
         setSuccessMessage(action === 'archive' ? 'Catatan diarsipkan.' : 'Catatan dipulihkan.')
     }
 
+    const handleTogglePin = async (memo: Memo) => {
+        const ownerId = userIdRef.current
+        if (!ownerId) {
+            reportError('Sesi pengguna tidak tersedia.')
+            return
+        }
+        const isPinned = Boolean(memo.pinned_at)
+        if (!isPinned && pinnedMemos.length >= 5) {
+            reportError(labels.pinLimitReached)
+            return
+        }
+
+        const { data, error } = await supabase
+            .from('memos')
+            .update({ pinned_at: isPinned ? null : new Date().toISOString() })
+            .eq('id', memo.id)
+            .eq('user_id', ownerId)
+            .eq('visibility', 'private')
+            .is('deleted_at', null)
+            .select('id')
+            .maybeSingle()
+        if (error) {
+            reportError(error.message)
+            return
+        }
+        if (!data) {
+            reportError('Catatan tidak ditemukan atau tidak dapat diakses.')
+            return
+        }
+
+        const refreshed = await Promise.all([
+            fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash', activeTab === 'favorites', activeTab === 'memos', false),
+            fetchPinnedMemos(),
+            fetchFavoriteCount(),
+        ])
+        if (refreshed.every(Boolean)) setSuccessMessage(isPinned ? labels.pinnedRemoved : labels.pinnedAdded)
+    }
+
+    const handleToggleFavorite = async (memo: Memo) => {
+        const ownerId = userIdRef.current
+        if (!ownerId) {
+            reportError('Sesi pengguna tidak tersedia.')
+            return
+        }
+        const isFavorited = Boolean(memo.favorited_at)
+        const { data, error } = await supabase
+            .from('memos')
+            .update({ favorited_at: isFavorited ? null : new Date().toISOString() })
+            .eq('id', memo.id)
+            .eq('user_id', ownerId)
+            .eq('visibility', 'private')
+            .is('deleted_at', null)
+            .select('id')
+            .maybeSingle()
+        if (error) {
+            reportError(error.message)
+            return
+        }
+        if (!data) {
+            reportError('Catatan tidak ditemukan atau tidak dapat diakses.')
+            return
+        }
+
+        const refreshed = await Promise.all([
+            fetchMemos(selectedTag, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash', activeTab === 'favorites', activeTab === 'memos', false),
+            fetchPinnedMemos(),
+            fetchFavoriteCount(),
+        ])
+        if (refreshed.every(Boolean)) setSuccessMessage(isFavorited ? labels.favoriteRemoved : labels.favoriteAdded)
+    }
+
     const handleSoftDeleteMemo = async (memo: Memo) => {
         const { data, error } = await supabase
             .from('memos')
-            .update({ deleted_at: new Date().toISOString() })
+            .update({ deleted_at: new Date().toISOString(), pinned_at: null })
             .eq('id', memo.id)
             .eq('user_id', userIdRef.current ?? '')
             .eq('visibility', 'private')
@@ -805,7 +975,7 @@ export default function HomePage() {
         setMemos((current) => current.filter((item) => item.id !== memo.id))
         setSelectedMemo((current) => current?.id === memo.id ? null : current)
         setRandomMemo((current) => current?.id === memo.id ? null : current)
-        await Promise.all([fetchTrashCount(), fetchTags(), fetchDailyCounts()])
+        await Promise.all([fetchMemoCounts(), fetchTags(), fetchDailyCounts()])
         setSuccessMessage(language === 'id' ? 'Catatan dipindahkan ke Sampah.' : 'Note moved to Trash.')
         return true
     }
@@ -851,7 +1021,7 @@ export default function HomePage() {
         }
 
         setMemos((current) => current.filter((memo) => memo.id !== id))
-        await Promise.all([fetchTrashCount(), fetchTags(), fetchDailyCounts()])
+        await Promise.all([fetchMemoCounts(), fetchTags(), fetchDailyCounts()])
         setSuccessMessage(language === 'id' ? 'Catatan dipulihkan.' : 'Note restored.')
     }
 
@@ -927,7 +1097,7 @@ export default function HomePage() {
                 if (!await permanentlyDeleteMemos(memosToDelete)) return
                 setSelectedMemo((current) => current && memosToDelete.some((memo) => memo.id === current.id) ? null : current)
                 setRandomMemo((current) => current && memosToDelete.some((memo) => memo.id === current.id) ? null : current)
-                await Promise.all([fetchTrashCount(), fetchTags(), fetchDailyCounts()])
+                await Promise.all([fetchMemoCounts(), fetchTags(), fetchDailyCounts()])
                 setSuccessMessage(deleteTarget.type === 'emptyTrash'
                     ? (language === 'id' ? 'Sampah berhasil dikosongkan.' : 'Trash emptied.')
                     : (language === 'id' ? 'Catatan dihapus permanen.' : 'Note permanently deleted.'))
@@ -1323,7 +1493,11 @@ export default function HomePage() {
             if (importedMemos.length === 0) throw new Error('File tidak berisi catatan untuk diimpor.')
             const { error } = await supabase.from('memos').insert(importedMemos)
             if (error) throw error
-            await Promise.all([fetchMemos(), fetchTags(), fetchDailyCounts()])
+            await Promise.all([
+                fetchMemos(null, searchQuery, selectedDate, activeTab === 'archived', activeTab === 'trash', activeTab === 'favorites', activeTab === 'memos'),
+                fetchTags(),
+                fetchDailyCounts(),
+            ])
             setSuccessMessage(`${importedMemos.length} catatan berhasil diimpor.`)
         } catch (error) {
             reportError(error instanceof Error ? error.message : 'File impor tidak dapat dibaca.')
@@ -1385,6 +1559,8 @@ export default function HomePage() {
             setOpenMenuId={setOpenMenuId}
             setEditingMemo={setEditingMemo}
             handleMemoAction={handleMemoAction}
+            onTogglePin={handleTogglePin}
+            onToggleFavorite={handleToggleFavorite}
             handleCopyMemo={handleCopyMemo}
             handleRestoreMemo={handleRestoreMemo}
             handlePermanentDeleteMemo={handlePermanentDeleteMemo}
@@ -1498,6 +1674,7 @@ export default function HomePage() {
                 navigateTo={navigateTo}
                 tagsList={tagsList}
                 trashCount={trashCount}
+                favoriteCount={favoriteCount}
                 selectedTag={selectedTag}
                 handleTagClick={handleTagClick}
                 calDate={calDate}
@@ -1599,7 +1776,7 @@ export default function HomePage() {
                                         onClick={() => {
                                             setSelectedTag(item.tag)
                                             setActiveTab('memos')
-                                            fetchMemos(item.tag, searchQuery, null)
+                                            fetchMemos(item.tag, searchQuery, null, false, false, false, true)
                                         }}
                                         className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-4 text-left hover:border-zinc-400 dark:border-zinc-800 dark:bg-[#18181b] dark:hover:border-zinc-600"
                                     >
@@ -1727,6 +1904,23 @@ export default function HomePage() {
                         )}
                         {renderLoadMoreButton()}
                     </section>
+                ) : activeTab === 'favorites' ? (
+                    <section className="space-y-4">
+                        <div>
+                            <h1 className="text-xl font-bold text-gray-800 dark:text-zinc-100">{labels.favorites}</h1>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">{labels.favoritesDescription}</p>
+                        </div>
+                        {memos.length === 0 ? (
+                            <p className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-gray-500 dark:bg-[#18181b] dark:border-zinc-800 dark:text-zinc-400">
+                                {memosLoading ? labels.loadingMemos : labels.noFavorites}
+                            </p>
+                        ) : (
+                            <div className="columns-1 md:columns-2 gap-4 space-y-4">
+                                {memos.map(renderMemoCard)}
+                            </div>
+                        )}
+                        {renderLoadMoreButton()}
+                    </section>
                 ) : (
                     <>
                         {activeTab === 'memos' ? (
@@ -1752,6 +1946,19 @@ export default function HomePage() {
                                 <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">{labels.archivedDescription}</p>
                             </div>
                         )}
+                        {activeTab === 'memos' &&
+                            !selectedTag &&
+                            !searchQuery.trim() &&
+                            !selectedDate &&
+                            pinnedMemos.length > 0 && (
+                                <section className="space-y-3">
+                                    <h2 className="text-sm font-semibold text-gray-600 dark:text-zinc-300">{labels.pinned}</h2>
+                                    <div className="columns-1 md:columns-2 gap-4 space-y-4">
+                                        {pinnedMemos.map(renderMemoCard)}
+                                    </div>
+                                    <div className="border-t border-zinc-200 dark:border-zinc-800" />
+                                </section>
+                            )}
                         {(selectedTag || selectedDate) && activeTab === 'memos' && (
                             <div className="flex flex-wrap items-center gap-2 text-xs">
                                 <span className="text-gray-500 dark:text-zinc-400">{labels.filterActive}</span>
@@ -1762,7 +1969,7 @@ export default function HomePage() {
                                     onClick={() => {
                                         setSelectedTag(null)
                                         setSelectedDate(null)
-                                        fetchMemos(null, searchQuery, null)
+                                        fetchMemos(null, searchQuery, null, false, false, false, true)
                                     }}
                                     className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 underline"
                                 >
