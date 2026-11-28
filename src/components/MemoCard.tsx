@@ -307,7 +307,7 @@ export default function MemoCard({
             )}
             <div
                 ref={memoContentRef}
-                className={`text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_p+p]:mt-3 [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5 ${isExpanded ? '' : 'max-h-[calc(1.625em*15)] overflow-hidden md:max-h-[calc(1.625em*20)]'}`}
+                className={`text-sm text-gray-800 dark:text-zinc-200 leading-relaxed break-words [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_p+p]:mt-3 [&_pre]:bg-[#262b33] [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:text-xs [&_ul]:space-y-1 [&_input[type=checkbox]]:accent-zinc-900 dark:[&_input[type=checkbox]]:accent-zinc-100 [&_input[type=checkbox]]:mr-1.5 ${isExpanded ? '' : 'max-h-[calc(1.625em*15)] overflow-hidden md:max-h-[calc(1.625em*20)]'}`}
             >
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
                     {displayContent}
